@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   formatDateKey, 
   getDailyLogs, 
@@ -22,8 +22,10 @@ import { ChecklistView } from './components/ChecklistView';
 import { GeminiAssistantView } from './components/GeminiAssistantView';
 import { StatsView } from './components/StatsView';
 import { BadgesAndPointsView } from './components/BadgesAndPointsView';
-import { TeacherDashboardView } from './components/TeacherDashboardView';
 import { StudentIdentityModal } from './components/StudentIdentityModal';
+import { AudioControlWidget } from './components/AudioControlWidget';
+import { IndonesianStudentsBackground } from './components/IndonesianStudentsBackground';
+import { audioService } from './utils/audioService';
 import { Sparkles } from 'lucide-react';
 
 export default function App() {
@@ -37,6 +39,8 @@ export default function App() {
   const [aiInitialPrompt, setAiInitialPrompt] = useState<string>('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState<boolean>(false);
+
+  const prevUnlockedBadgeCount = useRef<number>(badges.filter(b => b.unlocked).length);
 
   const isFirstTime = !studentProfile.isRegistered || !studentProfile.name?.trim() || !studentProfile.age || studentProfile.age <= 0;
 
@@ -55,6 +59,36 @@ export default function App() {
   // Initialize and ensure badges sync with real points
   useEffect(() => {
     reloadDataFromStorage();
+  }, [reloadDataFromStorage]);
+
+  // Sinkronisasi tanggal Checklist Harian secara real-time berdasarkan waktu lokal HP
+  useEffect(() => {
+    const syncLocalDate = () => {
+      const realLocalToday = formatDateKey(new Date());
+      setCurrentDateKey((prevKey) => {
+        if (prevKey !== realLocalToday) {
+          return realLocalToday;
+        }
+        return prevKey;
+      });
+    };
+
+    syncLocalDate();
+    const intervalId = setInterval(syncLocalDate, 1000);
+
+    const handleWindowActive = () => {
+      syncLocalDate();
+      reloadDataFromStorage();
+    };
+
+    document.addEventListener('visibilitychange', handleWindowActive);
+    window.addEventListener('focus', handleWindowActive);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleWindowActive);
+      window.removeEventListener('focus', handleWindowActive);
+    };
   }, [reloadDataFromStorage]);
 
   const showToast = (msg: string) => {
@@ -91,7 +125,7 @@ export default function App() {
     const updatedBadges = checkAndUnlockBadges(newTotalPoints, newStreak, updatedAllLogs);
     setBadges(updatedBadges);
 
-    // Toast feedback
+    // Audio SFX & Toast feedback
     const habitDef = HABITS_LIST.find((h) => h.id === habitId);
     if (completed) {
       const completedCount = HABITS_LIST.filter(
@@ -99,13 +133,26 @@ export default function App() {
       ).length;
 
       if (completedCount === 7) {
+        audioService.playCelebrationSFX();
         showToast('🎉 Hebat! Kamu telah menyelesaikan ke-7 kebiasaan hari ini! Bonus +30 Poin!');
       } else {
+        audioService.playHabitCheckSFX();
         showToast(`✓ Berhasil mencatat ${habitDef?.title}! (+${habitDef?.points} Poin)`);
       }
     } else {
+      audioService.playHabitUncheckSFX();
       showToast(`Tanda ${habitDef?.title} dibatalkan (-${habitDef?.points} Poin)`);
     }
+
+    // Check if new badge unlocked
+    const currentUnlockedCount = updatedBadges.filter(b => b.unlocked).length;
+    if (currentUnlockedCount > prevUnlockedBadgeCount.current) {
+      setTimeout(() => {
+        audioService.playBadgeUnlockedSFX();
+        showToast('🏆 Selamat! Kamu membuka lencana penghargaan baru!');
+      }, 500);
+    }
+    prevUnlockedBadgeCount.current = currentUnlockedCount;
   };
 
   const handleUpdateDailyMood = (mood: any) => {
@@ -136,7 +183,7 @@ export default function App() {
     setIsEditingProfile(false);
     showToast(
       isFirstTime
-        ? `Selamat datang di 7KAIH SMART AI, ${updated.name}! Langkah kecilmu membentuk masa depan hebat.`
+        ? `Selamat datang di 7 KEBIASAAN ANAK INDONESIA HEBAT, ${updated.name}! Langkah kecilmu membentuk masa depan hebat.`
         : 'Identitas profil siswa berhasil diperbarui.'
     );
   };
@@ -155,20 +202,25 @@ export default function App() {
   });
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans">
-      {/* Top Navigation */}
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        studentProfile={studentProfile}
-        totalPoints={totalPoints}
-        streak={streak}
-        todayCount={completedTodayCount}
-        onEditProfile={() => setIsEditingProfile(true)}
-      />
+    <div className="min-h-screen flex flex-col relative text-slate-900 font-sans selection:bg-red-600 selection:text-white">
+      {/* Latar Belakang Animasi 2D Anak-Anak Indonesia & Bendera Merah Putih Berkibar */}
+      <IndonesianStudentsBackground />
+
+      {/* Top Navigation - Student Only */}
+      <div className="relative z-20">
+        <Navbar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          studentProfile={studentProfile}
+          totalPoints={totalPoints}
+          streak={streak}
+          todayCount={completedTodayCount}
+          onEditProfile={() => setIsEditingProfile(true)}
+        />
+      </div>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {activeTab === 'dashboard' && (
           <DashboardView
             todayKey={todayKey}
@@ -196,8 +248,8 @@ export default function App() {
         {activeTab === 'checklist' && (
           <ChecklistView
             currentDateKey={currentDateKey}
-            onSelectDate={(dKey) => setCurrentDateKey(dKey)}
-            dayLog={currentViewLog}
+            onSelectDate={() => {}}
+            dayLog={allLogs[currentDateKey] || getOrCreateDayLog(currentDateKey)}
             allLogs={allLogs}
             onToggleHabit={handleToggleHabit}
             onUpdateDailyMood={handleUpdateDailyMood}
@@ -222,6 +274,7 @@ export default function App() {
             allLogs={allLogs}
             totalPoints={totalPoints}
             streak={streak}
+            studentProfile={studentProfile}
             onNavigateToChecklist={() => setActiveTab('checklist')}
           />
         )}
@@ -234,9 +287,10 @@ export default function App() {
             studentProfile={studentProfile}
           />
         )}
-
-        {activeTab === 'teacher' && <TeacherDashboardView />}
       </main>
+
+      {/* Audio Controller Widget (BGM & SFX) */}
+      <AudioControlWidget />
 
       {/* Floating Toast Notification */}
       {toastMessage && (
@@ -247,7 +301,9 @@ export default function App() {
       )}
 
       {/* Footer */}
-      <Footer />
+      <div className="relative z-10">
+        <Footer />
+      </div>
 
       {/* Student Identity Modal for First-time and Profile Editing */}
       <StudentIdentityModal

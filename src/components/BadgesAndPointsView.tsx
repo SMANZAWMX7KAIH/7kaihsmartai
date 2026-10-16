@@ -102,7 +102,7 @@ export const BadgesAndPointsView: React.FC<BadgesAndPointsViewProps> = ({
             Prinsip Pendidikan Karakter: Tanpa Hukuman, Penuh Apresiasi
           </h3>
           <p className="text-xs text-emerald-800 leading-relaxed">
-            Sistem 7KAIH SMART AI dirancang dengan prinsip psikologi perkembangan remaja: <strong>tidak ada pengurangan poin, tidak ada hukuman, dan tidak ada rasa malu</strong>. Setiap hari adalah lembaran baru untuk memulai kembali dengan gembira dan bangga atas setiap kebaikan kecil.
+            Sistem 7 KEBIASAAN ANAK INDONESIA HEBAT dirancang dengan prinsip psikologi perkembangan remaja: <strong>tidak ada pengurangan poin, tidak ada hukuman, dan tidak ada rasa malu</strong>. Setiap hari adalah lembaran baru untuk memulai kembali dengan gembira dan bangga atas setiap kebaikan kecil.
           </p>
         </div>
       </div>

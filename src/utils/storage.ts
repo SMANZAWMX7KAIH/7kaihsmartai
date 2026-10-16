@@ -354,7 +354,7 @@ export function getWeeklyTrendData(logs: Record<string, DailyLog>): {
 // Export backup to JSON file
 export function exportDataBackup(): void {
   const data = {
-    app: '7KAIH SMART AI',
+    app: '7 KEBIASAAN ANAK INDONESIA HEBAT',
     version: 2,
     exportedAt: new Date().toISOString(),
     logs: getDailyLogs(),

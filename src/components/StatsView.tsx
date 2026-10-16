@@ -556,7 +556,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
 
             {/* Catatan Privasi & Legalitas */}
             <div className="pt-4 border-t border-slate-200 text-[10px] text-slate-700 text-center font-medium">
-              Laporan Karakter ini diverifikasi mandiri oleh siswa pada platform 7KAIH SMART AI. Data tersimpan secara lokal pada peramban perangkat siswa demi menjaga privasi dan keamanan data anak.
+              Laporan Karakter ini diverifikasi mandiri oleh siswa pada platform 7 KEBIASAAN ANAK INDONESIA HEBAT. Data tersimpan secara lokal pada peramban perangkat siswa demi menjaga privasi dan keamanan data anak.
             </div>
           </div>
         </div>

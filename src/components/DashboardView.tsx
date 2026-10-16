@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   CheckCircle2, 
   Circle, 
@@ -16,8 +16,10 @@ import {
   Quote,
   User,
   Edit3,
-  Heart
+  Heart,
+  Volume2
 } from 'lucide-react';
+import { motion, useReducedMotion, Variants } from 'motion/react';
 import { 
   DailyLog, 
   HabitId, 
@@ -29,7 +31,9 @@ import {
   HABIT_MOTIVATIONAL_QUOTES 
 } from '../data/habitsData';
 import { HabitIcon } from './HabitIcon';
-import { formatIndonesianDate, getStudentLevel } from '../utils/storage';
+import { getStudentLevel } from '../utils/storage';
+import { useLiveDeviceClock } from '../utils/useLiveDeviceClock';
+import { IndonesianStudentsShowcase } from './IndonesianStudentsShowcase';
 
 interface DashboardViewProps {
   todayKey: string;
@@ -52,6 +56,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   streak,
   onEditProfile,
 }) => {
+  const shouldReduceMotion = useReducedMotion();
+  const { timeString, dateString, fullGreeting, hours } = useLiveDeviceClock();
+
   const completedHabitsCount = HABITS_LIST.filter(
     (h) => todayLog.habits?.[h.id]?.completed
   ).length;
@@ -60,40 +67,102 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const studentLevel = getStudentLevel(totalPoints);
 
   // Quote rotation
-  const [quoteIndex, setQuoteIndex] = React.useState(0);
+  const [quoteIndex, setQuoteIndex] = useState(0);
   const currentQuote = DAILY_QUOTES[quoteIndex % DAILY_QUOTES.length];
 
+  // Kebiasaan fokus sesuai jam saat ini untuk memandu siswa SMA
+  const getCurrentPeriodFocus = () => {
+    if (hours >= 4 && hours < 6) return { habit: 'Bangun Pagi & Ibadah', icon: '🌅', desc: 'Awali fajar dengan syukur dan segelas air hangat' };
+    if (hours >= 6 && hours < 8) return { habit: 'Berolahraga & Makan Sehat', icon: '🏃', desc: 'Peregangan badan & sarapan bergizi seimbang' };
+    if (hours >= 8 && hours < 15) return { habit: 'Gemar Belajar & Bermasyarakat', icon: '📚', desc: 'Fokus menuntut ilmu dan berkolaborasi di sekolah' };
+    if (hours >= 15 && hours < 18) return { habit: 'Bermasyarakat & Berolahraga', icon: '🤝', desc: 'Eksplorasi bakat, hobi sehat, dan gotong royong' };
+    if (hours >= 18 && hours < 21) return { habit: 'Ibadah & Evaluasi Belajar', icon: '🤲', desc: 'Ibadah malam & penguatan materi pelajaran' };
+    return { habit: 'Tidur Cepat & Istirahat Berkualitas', icon: '🌙', desc: 'Hindari layar gawai demi regenerasi otak optimal' };
+  };
+
+  const periodFocus = getCurrentPeriodFocus();
+
+  // Animation variants respecting reduced motion
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: shouldReduceMotion ? 0 : 0.08,
+      },
+    },
+  };
+
+  const itemVariants: Variants = {
+    hidden: { opacity: 0, y: shouldReduceMotion ? 0 : 14 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { duration: 0.35, ease: 'easeOut' }
+    },
+  };
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-200">
-      {/* Hero Welcome Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-linear-to-r from-blue-700 via-blue-600 to-emerald-600 text-white p-6 sm:p-8 shadow-lg shadow-blue-900/10">
+    <motion.div 
+      className="space-y-8"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      {/* Hero Welcome Banner dengan Live Digital Clock & Salam Otomatis */}
+      <motion.div 
+        variants={itemVariants}
+        className="relative overflow-hidden rounded-2xl bg-linear-to-r from-blue-700 via-blue-600 to-emerald-600 text-white p-6 sm:p-8 shadow-lg shadow-blue-900/10"
+      >
         <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute bottom-0 right-1/4 -mb-10 w-48 h-48 bg-emerald-400/20 rounded-full blur-xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div className="max-w-2xl space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-white text-xs font-semibold backdrop-blur-xs">
-              <Calendar className="w-3.5 h-3.5" />
-              <span>{formatIndonesianDate(todayKey)}</span>
+          <div className="max-w-2xl space-y-3">
+            {/* Live Indonesian Date & Time Badge */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-white text-xs font-semibold backdrop-blur-xs border border-white/20">
+                <Calendar className="w-3.5 h-3.5 text-blue-200" />
+                <span>{dateString}</span>
+              </div>
+
+              {/* Digital Clock Realtime */}
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900/40 text-emerald-300 font-mono text-xs font-bold backdrop-blur-xs border border-emerald-400/30 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+                <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="tracking-wider">{timeString}</span>
+              </div>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Semangat Pagi, {studentProfile.name || 'Siswa 7KAIH'}! 🇮🇩
+
+            {/* Salam Otomatis Sesuai Waktu HP */}
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight drop-shadow-xs">
+              {fullGreeting(studentProfile.name)}
             </h1>
+
             <p className="text-blue-100 text-sm sm:text-base leading-relaxed font-medium">
-              Langkah kecil hari ini membentuk generasi hebat di masa depan. Setiap tindakan positifmu membantumu bertumbuh dan berkarya.
+              Langkah kecil hari ini membentuk generasi hebat di masa depan. Setiap tindakan positifmu membantumu bertumbuh, berkarakter, dan berkarya.
             </p>
+
+            {/* Current Time Period Recommendation Pill */}
+            <div className="pt-1 flex items-center gap-2 text-xs bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/15 w-fit">
+              <span className="text-base">{periodFocus.icon}</span>
+              <span className="font-semibold text-blue-100">
+                Fokus Waktu Ini: <strong className="text-white font-extrabold">{periodFocus.habit}</strong> — {periodFocus.desc}
+              </span>
+            </div>
+
             <div className="pt-2 flex flex-wrap items-center gap-2">
               <span className="px-2.5 py-1 rounded-md bg-white/20 text-xs font-bold backdrop-blur-xs flex items-center gap-1.5">
                 <User className="w-3.5 h-3.5" />
                 <span>Usia: {studentProfile.age > 0 ? `${studentProfile.age} Tahun` : 'Pelajar SMA'}</span>
               </span>
               <span className="px-2.5 py-1 rounded-md bg-white/20 text-xs font-medium backdrop-blur-xs">
-                {studentProfile.school || 'SMA Negeri Indonesia Hebat'}
+                {studentProfile.school || 'SMA Indonesia Hebat'}
               </span>
               {onEditProfile && (
                 <button
                   onClick={onEditProfile}
-                  className="px-2.5 py-1 rounded-md bg-white/25 hover:bg-white/35 text-xs font-bold backdrop-blur-xs flex items-center gap-1 transition-colors text-white"
+                  className="px-2.5 py-1 rounded-md bg-white/25 hover:bg-white/35 text-xs font-bold backdrop-blur-xs flex items-center gap-1 transition-all text-white active:scale-95"
                 >
                   <Edit3 className="w-3 h-3" />
                   <span>Ubah Identitas</span>
@@ -103,31 +172,39 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Quick CTA to AI Assistant */}
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 flex flex-col justify-between gap-3 min-w-[260px]">
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4.5 border border-white/20 flex flex-col justify-between gap-3 min-w-[270px]">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-white text-blue-700 flex items-center justify-center font-bold shadow-xs">
+              <div className="w-11 h-11 rounded-xl bg-white text-blue-700 flex items-center justify-center font-bold shadow-sm">
                 <Bot className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-xs font-bold text-emerald-300 flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" /> Asisten Cerdas KAIH AI
+                <p className="text-xs font-extrabold text-emerald-300 flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5" /> Asisten Cerdas KAIH AI
                 </p>
-                <p className="text-xs text-white/90">Butuh jadwal atau tips belajar?</p>
+                <p className="text-xs text-white/90 font-medium">Butuh jadwal atau tips kebiasaan?</p>
               </div>
             </div>
             <button
               onClick={() => onNavigate('assistant')}
-              className="w-full py-2 px-3 bg-white hover:bg-blue-50 text-blue-700 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-xs group"
+              className="w-full py-2.5 px-3 bg-white hover:bg-blue-50 text-blue-700 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all shadow-xs group active:scale-98"
             >
               <span>Konsultasi dengan Gemini</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
+
+      {/* Ilustrasi Murid Indonesia, Bendera Merah Putih, dan Buku 7 KAIH */}
+      <motion.div variants={itemVariants}>
+        <IndonesianStudentsShowcase onExploreHabits={() => onNavigate('habits')} />
+      </motion.div>
 
       {/* Sambutan Motivasi Personal Siswa */}
-      <div className="bg-linear-to-r from-blue-50/80 via-white to-emerald-50/80 rounded-2xl border border-blue-200/80 p-5 sm:p-6 shadow-xs relative overflow-hidden">
+      <motion.div 
+        variants={itemVariants}
+        className="bg-linear-to-r from-blue-50/80 via-white to-emerald-50/80 rounded-2xl border border-blue-200/80 p-5 sm:p-6 shadow-xs relative overflow-hidden"
+      >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-linear-to-tr from-blue-600 to-emerald-600 text-white flex items-center justify-center font-black text-base shadow-xs">
@@ -136,10 +213,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-sm sm:text-base text-slate-900">
-                  {studentProfile.name}
+                  {studentProfile.name || 'Sobat 7KAIH'}
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-200">
-                  {studentProfile.age} Tahun
+                  {studentProfile.age > 0 ? `${studentProfile.age} Tahun` : 'Pelajar SMA'}
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 font-medium">
@@ -150,7 +227,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {onEditProfile && (
             <button
               onClick={onEditProfile}
-              className="self-start sm:self-auto px-3 py-1.5 rounded-lg bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs"
+              className="self-start sm:self-auto px-3 py-1.5 rounded-lg bg-white hover:bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs active:scale-95"
             >
               <Edit3 className="w-3.5 h-3.5" />
               <span>Ubah Nama & Umur</span>
@@ -167,16 +244,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               Motivasi Personal Untukmu:
             </p>
             <p className="text-xs sm:text-sm text-slate-800 font-medium leading-relaxed">
-              "Halo, <strong className="text-blue-700 font-extrabold">{studentProfile.name}</strong>! Kamu berusia <strong className="text-emerald-700 font-extrabold">{studentProfile.age} tahun</strong> dan hari ini adalah kesempatan baru untuk menjadi lebih baik. Tidak perlu langsung sempurna. Mulailah dengan satu kebiasaan baik, lakukan dengan konsisten, dan teruslah berkembang!"
+              "Halo, <strong className="text-blue-700 font-extrabold">{studentProfile.name || 'Sobat Hebat'}</strong>! {studentProfile.age > 0 ? `Kamu berusia ${studentProfile.age} tahun dan` : 'Hari ini'} adalah kesempatan baru untuk menjadi lebih baik. Tidak perlu langsung sempurna. Mulailah dengan satu kebiasaan baik, lakukan dengan konsisten, dan teruslah berkembang!"
             </p>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Summary Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <motion.div 
+        variants={itemVariants}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
+      >
         {/* Progress Card */}
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs flex items-center justify-between hover:shadow-md transition-shadow">
           <div>
             <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
               Capaian Hari Ini
@@ -218,7 +298,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Streak Card */}
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs flex items-center justify-between hover:shadow-md transition-shadow">
           <div>
             <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
               Konsistensi (Streak)
@@ -234,12 +314,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </p>
           </div>
           <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200/80 flex items-center justify-center text-amber-500 shadow-xs">
-            <Flame className="w-6 h-6 fill-amber-500" />
+            <Flame className="w-6 h-6 fill-amber-500 animate-pulse" />
           </div>
         </div>
 
         {/* Level Progression */}
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs">
+        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
               Tingkat Karakter
@@ -265,7 +345,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         {/* Points Today */}
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs flex items-center justify-between">
+        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-xs flex items-center justify-between hover:shadow-md transition-shadow">
           <div>
             <p className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
               Poin Diraih Hari Ini
@@ -284,10 +364,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <Award className="w-6 h-6" />
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Motivational Quote Card */}
-      <div className="bg-linear-to-r from-emerald-50 via-teal-50 to-blue-50 border border-emerald-200/70 rounded-xl p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <motion.div 
+        variants={itemVariants}
+        className="bg-linear-to-r from-emerald-50 via-teal-50 to-blue-50 border border-emerald-200/70 rounded-xl p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+      >
         <div className="flex items-start gap-3">
           <div className="p-2.5 rounded-lg bg-emerald-600 text-white shadow-xs shrink-0 mt-0.5">
             <Quote className="w-4 h-4" />
@@ -303,14 +386,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
         <button
           onClick={() => setQuoteIndex(prev => prev + 1)}
-          className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 px-3 py-1.5 rounded-lg bg-white border border-emerald-200 hover:bg-emerald-50/50 transition-colors shrink-0 self-end sm:self-center"
+          className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 px-3 py-1.5 rounded-lg bg-white border border-emerald-200 hover:bg-emerald-50/50 transition-colors shrink-0 self-end sm:self-center active:scale-95"
         >
           Kutipan Lain
         </button>
-      </div>
+      </motion.div>
 
-      {/* Quick Checklist Section */}
-      <div className="space-y-4">
+      {/* Quick Checklist Section with Interactive Micro-Animations */}
+      <motion.div variants={itemVariants} className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -318,12 +401,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span>Checklist Cepat Hari Ini</span>
             </h2>
             <p className="text-xs text-slate-700 font-medium">
-              Ketuk untuk menandai kebiasaan yang sudah kamu laksanakan hari ini
+              Ketuk untuk menandai kebiasaan yang sudah kamu laksanakan hari ini (didukung efek suara interaktif)
             </p>
           </div>
           <button
             onClick={() => onNavigate('checklist')}
-            className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 self-start sm:self-auto"
+            className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 self-start sm:self-auto active:scale-95"
           >
             <span>Buka Riwayat & Catatan Lengkap</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -341,7 +424,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 onClick={() => onToggleHabit(habit.id, !isCompleted)}
                 className={`group relative p-4 rounded-xl border transition-all duration-200 cursor-pointer select-none flex flex-col justify-between ${
                   isCompleted
-                    ? 'bg-emerald-50/60 border-emerald-300 shadow-xs'
+                    ? 'bg-emerald-50/70 border-emerald-300 shadow-xs'
                     : 'bg-white border-slate-200 hover:border-blue-300 hover:shadow-sm'
                 }`}
               >
@@ -349,9 +432,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2.5">
                       <div
-                        className={`w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
+                        className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all ${
                           isCompleted
-                            ? 'bg-emerald-600 text-white'
+                            ? 'bg-emerald-600 text-white scale-105 shadow-sm'
                             : 'bg-slate-100 text-slate-600 group-hover:bg-blue-100 group-hover:text-blue-600'
                         }`}
                       >
@@ -370,7 +453,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {/* Toggle check button */}
                     <div className="pt-0.5">
                       {isCompleted ? (
-                        <CheckCircle2 className="w-5 h-5 text-emerald-600 fill-emerald-100 transition-transform group-hover:scale-110" />
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600 fill-emerald-100 transition-transform group-hover:scale-115" />
                       ) : (
                         <Circle className="w-5 h-5 text-slate-300 group-hover:text-blue-400 transition-colors" />
                       )}
@@ -408,7 +491,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Quick AI Schedule Card */}
           <div
             onClick={() => onNavigate('assistant')}
-            className="p-4 rounded-xl border border-dashed border-blue-300 bg-linear-to-b from-blue-50/70 to-emerald-50/70 hover:border-blue-400 transition-all cursor-pointer flex flex-col justify-between group shadow-xs"
+            className="p-4 rounded-xl border border-dashed border-blue-300 bg-linear-to-b from-blue-50/70 to-emerald-50/70 hover:border-blue-400 transition-all cursor-pointer flex flex-col justify-between group shadow-xs active:scale-98"
           >
             <div>
               <div className="flex items-center gap-2 text-blue-700">
@@ -430,10 +513,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Kumpulan Kata-Kata Motivasi 7KAIH */}
-      <div className="space-y-4">
+      <motion.div variants={itemVariants} className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
           <div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200 mb-1">
@@ -495,10 +578,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           ))}
         </div>
-      </div>
+      </motion.div>
 
-      {/* 7KAIH Values Quick Guide Banner */}
-      <div className="bg-slate-900 text-white rounded-2xl p-6 sm:p-8 flex flex-col lg:flex-row items-center justify-between gap-6 shadow-md">
+      {/* 7KAIH Values Quick Guide Banner (Siswa oriented) */}
+      <motion.div 
+        variants={itemVariants}
+        className="bg-slate-900 text-white rounded-2xl p-6 sm:p-8 flex flex-col lg:flex-row items-center justify-between gap-6 shadow-md"
+      >
         <div className="space-y-2 text-center lg:text-left">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 text-xs font-bold border border-blue-500/30">
             <ShieldCheck className="w-3.5 h-3.5" /> Filosofi Karakter Bangsa
@@ -513,18 +599,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto shrink-0">
           <button
             onClick={() => onNavigate('habits')}
-            className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all text-center"
+            className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all text-center shadow-md shadow-blue-600/30 active:scale-95"
           >
             Pelajari 7 Kebiasaan Lengkap
           </button>
           <button
-            onClick={() => onNavigate('teacher')}
-            className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-all text-center"
+            onClick={() => onNavigate('badges')}
+            className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-all text-center active:scale-95"
           >
-            Lihat Laporan Guru
+            Lihat Poin & Lencana Saya
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };

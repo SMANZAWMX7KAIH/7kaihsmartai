@@ -70,18 +70,3 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
 }
-
-export interface ClassStudentData {
-  id: string;
-  nisn: string;
-  name: string;
-  grade: string;
-  weeklyAttendanceRate: number;
-  totalPoints: number;
-  streak: number;
-  todayCompletedCount: number;
-  lastActive: string;
-  strongestHabit: string;
-  habitNeedsEncouragement: string;
-  teacherNote?: string;
-}

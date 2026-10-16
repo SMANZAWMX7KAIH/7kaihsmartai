@@ -5,8 +5,6 @@ import {
   Circle, 
   Clock, 
   Award, 
-  ChevronLeft, 
-  ChevronRight, 
   Edit3, 
   History, 
   Smile, 
@@ -67,15 +65,7 @@ export const ChecklistView: React.FC<ChecklistViewProps> = ({
 
   const completionPercent = Math.round((completedCount / 7) * 100);
 
-  // Date shifting
-  const handleShiftDate = (days: number) => {
-    const [y, m, d] = currentDateKey.split('-').map(Number);
-    const date = new Date(y, m - 1, d);
-    date.setDate(date.getDate() + days);
-    onSelectDate(formatDateKey(date));
-  };
-
-  const isToday = currentDateKey === formatDateKey(new Date());
+  const isToday = true;
 
   // Past dates list sorted descending
   const sortedDates = Object.keys(allLogs).sort().reverse();
@@ -184,72 +174,41 @@ export const ChecklistView: React.FC<ChecklistViewProps> = ({
         </div>
       )}
 
-      {/* Date Header & Navigation */}
+      {/* Date Header - Terkunci Otomatis Sesuai Tanggal Hari Ini di HP */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => handleShiftDate(-1)}
-            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
-            title="Hari Sebelumnya"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-linear-to-tr from-red-600 to-rose-600 text-white flex items-center justify-center font-bold shadow-md shadow-red-500/20 shrink-0">
+            <CalendarIcon className="w-6 h-6 text-white" />
+          </div>
 
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg sm:text-xl font-extrabold text-slate-900">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">
                 {formatIndonesianDate(currentDateKey)}
               </h1>
-              {isToday && (
-                <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-bold text-[10px]">
-                  Hari Ini
-                </span>
-              )}
+              <span className="px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 font-extrabold text-[11px] border border-red-200 flex items-center gap-1">
+                <span>🇮🇩</span>
+                <span>Hari Ini (Waktu HP)</span>
+              </span>
             </div>
-            <p className="text-xs text-slate-700 font-medium">
-              Ditandai: <strong className="text-slate-900">{completedCount} dari 7 kebiasaan</strong> ({completionPercent}%) • +{dayLog.pointsEarned} Poin
+            <p className="text-xs text-slate-600 font-medium mt-0.5">
+              Ditandai: <strong className="text-slate-900 font-black">{completedCount} dari 7 kebiasaan</strong> ({completionPercent}%) • <strong className="text-red-700 font-black">+{dayLog.pointsEarned} Poin</strong>
             </p>
           </div>
-
-          <button
-            onClick={() => handleShiftDate(1)}
-            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
-            title="Hari Berikutnya"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
         </div>
 
-        {/* Quick Date Shortcuts */}
+        {/* Tombol Lihat Riwayat Catatan Masa Lalu (Read-only) */}
         <div className="flex items-center gap-2 self-start md:self-auto">
-          {!isToday && (
-            <button
-              onClick={() => onSelectDate(formatDateKey(new Date()))}
-              className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold text-xs transition-colors"
-            >
-              Kembali ke Hari Ini
-            </button>
-          )}
-
-          <div className="relative">
-            <input
-              type="date"
-              value={currentDateKey}
-              onChange={(e) => e.target.value && onSelectDate(e.target.value)}
-              className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 cursor-pointer"
-            />
-          </div>
-
           <button
             onClick={() => setViewHistoryTable(!viewHistoryTable)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs ${
               viewHistoryTable
-                ? 'bg-blue-600 text-white'
+                ? 'bg-slate-900 text-white'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
           >
             <History className="w-3.5 h-3.5" />
-            <span>{viewHistoryTable ? 'Tutup Riwayat' : 'Lihat Riwayat'}</span>
+            <span>{viewHistoryTable ? 'Tutup Arsip Riwayat' : 'Lihat Arsip Riwayat'}</span>
           </button>
         </div>
       </div>
@@ -330,15 +289,15 @@ export const ChecklistView: React.FC<ChecklistViewProps> = ({
                           )}
                         </td>
                         <td className="py-2.5 px-3 text-right">
-                          <button
-                            onClick={() => {
-                              onSelectDate(dKey);
-                              setViewHistoryTable(false);
-                            }}
-                            className="text-xs text-blue-600 hover:text-blue-800 font-bold"
-                          >
-                            Buka Tanggal
-                          </button>
+                          {isCurrent ? (
+                            <span className="text-[11px] font-bold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-md">
+                              Hari Ini
+                            </span>
+                          ) : (
+                            <span className="text-[11px] font-medium text-slate-500">
+                              Arsip Tersimpan
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );

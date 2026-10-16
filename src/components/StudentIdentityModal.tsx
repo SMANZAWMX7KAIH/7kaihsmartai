@@ -112,7 +112,7 @@ export const StudentIdentityModal: React.FC<StudentIdentityModalProps> = ({
           </div>
 
           <h2 className="text-xl sm:text-2xl font-black tracking-tight uppercase">
-            {isFirstTime ? 'SELAMAT DATANG DI 7KAIH SMART AI!' : 'Ubah Identitas Siswa'}
+            {isFirstTime ? 'SELAMAT DATANG DI 7 KEBIASAAN ANAK INDONESIA HEBAT!' : 'Ubah Identitas Siswa'}
           </h2>
           <p className="text-blue-100 text-xs sm:text-sm mt-1.5 font-medium leading-relaxed max-w-md mx-auto">
             "Langkah kecil hari ini membentuk generasi hebat di masa depan."

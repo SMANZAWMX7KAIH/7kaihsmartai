@@ -7,7 +7,6 @@ import {
   Bot, 
   BarChart3, 
   Award, 
-  School,
   Flame,
   Menu,
   X
@@ -42,7 +41,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'assistant', label: 'Asisten AI Gemini', icon: Bot, isAi: true },
     { id: 'stats', label: 'Statistik', icon: BarChart3 },
     { id: 'badges', label: 'Poin & Lencana', icon: Award },
-    { id: 'teacher', label: 'Dashboard Guru', icon: School },
   ];
 
   const handleSelectTab = (tabId: string) => {
@@ -59,20 +57,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center gap-3 cursor-pointer select-none"
             onClick={() => handleSelectTab('dashboard')}
           >
-            <div className="w-10 h-10 rounded-xl bg-linear-to-tr from-blue-700 via-blue-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20 font-extrabold text-lg tracking-wider">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-tr from-red-600 via-rose-600 to-red-700 flex items-center justify-center text-white shadow-md shadow-red-500/25 font-black text-lg tracking-wider border border-white/40 shrink-0">
               7K
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-extrabold text-xl tracking-tight bg-linear-to-r from-blue-700 via-blue-600 to-emerald-600 bg-clip-text text-transparent">
-                  7KAIH SMART AI
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <span className="font-black text-xs sm:text-base lg:text-lg tracking-tight bg-linear-to-r from-red-700 via-rose-600 to-slate-900 bg-clip-text text-transparent leading-tight block">
+                  7 KEBIASAAN ANAK INDONESIA HEBAT
                 </span>
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="hidden md:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-red-50 text-red-700 border border-red-200 shrink-0">
                   <Sparkles className="w-2.5 h-2.5" /> SMA
                 </span>
               </div>
-              <p className="text-[11px] text-slate-700 hidden sm:block font-medium">
-                7 Kebiasaan Anak Indonesia Hebat
+              <p className="text-[10px] text-slate-600 hidden sm:block font-bold">
+                Platform Karakter Unggul Pelajar Indonesia
               </p>
             </div>
           </div>

@@ -164,54 +164,6 @@ Berikan respon JSON valid dengan struktur:
   }
 });
 
-// 4. AI Teacher Evaluation & Character Insights
-app.post('/api/gemini/teacher-insights', async (req: Request, res: Response) => {
-  try {
-    const { className, totalStudents, habitCompletionStats, topStrengths, lowHabits } = req.body;
-
-    const ai = getGenAI();
-    if (!ai) {
-      return res.json({
-        summary: `Evaluasi Kelas ${className || 'SMA'}: Rata-rata ketercapaian kebiasaan sudah menunjukkan tren positif. Pembiasaan ibadah dan belajar mandiri terus berjalan.`,
-        recommendations: [
-          'Adakan program peregangan bersama 5 menit sebelum jam pelajaran pertama untuk meningkatkan kebiasaan berolahraga.',
-          'Sosialisasikan kampanye "Matikan Gawai Pukul 21.30" demi mengatasi tantangan tidur larut malam pada remaja.',
-          'Berikan apresiasi sertifikat digital "Bintang 7KAIH Mingguan" untuk memotivasi siswa yang konsisten.'
-        ],
-        actionPlan: 'Fokuskan pembinaan minggu ini pada manajemen waktu malam dan asupan sarapan sehat.'
-      });
-    }
-
-    const prompt = `Anda adalah konsultan pendidikan karakter Kemendikbudristek untuk jenjang SMA. Berikan analisis pedagogis objektif dan saran pembinaan untuk Wali Kelas / Guru BK berdasarkan data ketercapaian "7 Kebiasaan Anak Indonesia Hebat" berikut:
-- Kelas: ${className || 'Kelas XI SMA'}
-- Jumlah Siswa: ${totalStudents || 36} siswa
-- Rata-rata Ketercapaian Kelas: ${JSON.stringify(habitCompletionStats || {})}
-- Kebiasaan Terkuat: ${JSON.stringify(topStrengths || ['Gemar Belajar', 'Beribadah'])}
-- Kebiasaan yang Masih Rendah: ${JSON.stringify(lowHabits || ['Tidur Cepat', 'Berolahraga'])}
-
-Kembalikan jawaban dalam JSON dengan format:
-{
-  "summary": "Ringkasan analisis kondisi karakter kelas",
-  "recommendations": ["Saran praktis 1 untuk guru", "Saran praktis 2", "Saran praktis 3"],
-  "actionPlan": "Rencana tindak lanjut mingguan yang menyenangkan tanpa menghukum siswa"
-}`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0.5,
-      },
-    });
-
-    const parsed = JSON.parse(response.text || '{}');
-    res.json(parsed);
-  } catch (error: any) {
-    console.error('Error in /api/gemini/teacher-insights:', error);
-    res.status(500).json({ error: 'Gagal membuat evaluasi guru.' });
-  }
-});
 
 // 5. AI Grounded Habit Recommendations based purely on real user checklist records
 app.post('/api/gemini/habit-recommendations', async (req: Request, res: Response) => {
@@ -327,7 +279,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 7KAIH SMART AI Server running on http://0.0.0.0:${PORT}`);
+    console.log(`🚀 7 KEBIASAAN ANAK INDONESIA HEBAT 🇮🇩 Server running on http://0.0.0.0:${PORT}`);
   });
 }
 
