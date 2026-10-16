@@ -80,7 +80,7 @@ class AudioService {
     this.audio.preload = 'metadata';
 
     // Prioritaskan berkas mp3 rekaman asli di public/audio/
-    this.audio.src = 'this.audio.src = `${import.meta.env.BASE_URL}audio/indonesia-raya.mp3`;';
+    this.audio.src = '`${import.meta.env.BASE_URL}audio/indonesia-raya.mp3`;';
 
     // Volume awal 100% (1.0)
     this.audio.volume = this.state.volume;
@@ -138,7 +138,7 @@ class AudioService {
       if (mediaErr?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
         // Coba alternatif ogg jika mp3 gagal
         if (this.audio && !this.audio.src.endsWith('.ogg')) {
-          this.audio.src = 'this.audio.src = `${import.meta.env.BASE_URL}audio/indonesia-raya.ogg`;';
+          this.audio.src = '`${import.meta.env.BASE_URL}audio/indonesia-raya.ogg`;';
           this.audio.load();
           return;
         }
