@@ -11,6 +11,7 @@ import {
   Heart
 } from 'lucide-react';
 import { StudentProfile } from '../types';
+import heroStudentsAnime from '../assets/images/bg_anime_bendera_merah_putih_1792359577913.jpg';
 
 interface StudentIdentityModalProps {
   isOpen: boolean;
@@ -95,28 +96,40 @@ export const StudentIdentityModal: React.FC<StudentIdentityModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
       <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-8">
-        {/* Top Header Banner */}
-        <div className="bg-linear-to-r from-blue-700 via-blue-600 to-emerald-600 p-6 sm:p-8 text-white text-center relative">
-          {!isFirstTime && onClose && (
-            <button
-              onClick={onClose}
-              className="absolute top-4 right-4 text-white/80 hover:text-white p-1 rounded-full hover:bg-white/10 transition-colors"
-              title="Tutup"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
+        {/* Top Header Banner with Anime Students Visual */}
+        <div className="relative overflow-hidden bg-slate-900 text-white text-center">
+          <div className="relative aspect-16/7 w-full overflow-hidden">
+            <img
+              src={heroStudentsAnime}
+              alt="Pelajar Indonesia Anime"
+              className="w-full h-full object-cover object-center"
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute inset-0 bg-linear-to-t from-slate-950 via-blue-950/60 to-black/30" />
+            <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-red-600 via-rose-500 to-sky-400" />
+            
+            {!isFirstTime && onClose && (
+              <button
+                onClick={onClose}
+                className="absolute top-3 right-3 text-white/90 hover:text-white p-1.5 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-xs transition-colors"
+                title="Tutup"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
 
-          <div className="w-14 h-14 mx-auto rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white font-extrabold text-2xl shadow-md border border-white/20 mb-3">
-            7K
+            <div className="absolute bottom-3 left-4 right-4">
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-xs text-amber-300 text-[10px] font-black border border-white/20 mb-1">
+                🇮🇩 ANAK HEBAT, INDONESIA KUAT!
+              </span>
+              <h2 className="text-lg sm:text-xl font-black tracking-tight uppercase leading-tight text-white drop-shadow-md">
+                {isFirstTime ? '7 Kebiasaan Anak Indonesia Hebat' : 'Identitas Siswa'}
+              </h2>
+            </div>
           </div>
-
-          <h2 className="text-xl sm:text-2xl font-black tracking-tight uppercase">
-            {isFirstTime ? 'SELAMAT DATANG DI 7 KEBIASAAN ANAK INDONESIA HEBAT!' : 'Ubah Identitas Siswa'}
-          </h2>
-          <p className="text-blue-100 text-xs sm:text-sm mt-1.5 font-medium leading-relaxed max-w-md mx-auto">
-            "Langkah kecil hari ini membentuk generasi hebat di masa depan."
-          </p>
+          <div className="bg-linear-to-r from-blue-700 via-sky-600 to-emerald-600 px-4 py-2 text-[11px] font-semibold text-blue-50">
+            "Mulai dari kebiasaan kecil, untuk masa depan besar!"
+          </div>
         </div>
 
         {/* Form Body */}

@@ -97,105 +97,119 @@ export const HabitsGuideView: React.FC<HabitsGuideViewProps> = ({
           return (
             <div
               key={habit.id}
-              className="bg-white rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all duration-200 p-6 flex flex-col justify-between group"
+              className="bg-white rounded-3xl border-2 border-slate-200 hover:border-sky-300 hover:shadow-xl transition-all duration-300 flex flex-col justify-between group overflow-hidden shadow-xs"
             >
-              <div className="space-y-4">
-                {/* Header Badge & Icon */}
-                <div className="flex items-start justify-between">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white bg-linear-to-tr ${habit.accentColor} shadow-md`}>
-                    <HabitIcon name={habit.icon} className="w-6 h-6" />
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${habit.badgeColor}`}>
-                      {habit.category}
-                    </span>
-                    <span className="text-[11px] font-bold text-slate-700">
-                      +{habit.points} Poin
-                    </span>
-                  </div>
+              {/* Anime Artwork Card Header */}
+              <div className="relative aspect-4/3 w-full overflow-hidden bg-slate-100">
+                {habit.image && (
+                  <img
+                    src={habit.image}
+                    alt={`Ilustrasi anime ${habit.title}`}
+                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
+                <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
+
+                {/* Top badges */}
+                <div className="absolute top-3 left-3 right-3 flex items-center justify-between">
+                  <span className="px-2.5 py-1 rounded-xl bg-slate-900/80 backdrop-blur-md text-white text-[11px] font-black border border-white/20 shadow-xs">
+                    Kebiasaan #{habit.order}
+                  </span>
+                  <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-xl shadow-xs border backdrop-blur-md ${habit.badgeColor}`}>
+                    {habit.category}
+                  </span>
                 </div>
 
-                <div>
-                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700">
-                    Kebiasaan #{habit.order}
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                {/* Bottom of image: Title */}
+                <div className="absolute bottom-3 left-3 right-3 text-white drop-shadow-md">
+                  <span className="text-[10px] font-extrabold text-amber-300 uppercase tracking-wider block">
+                    {habit.targetTime}
+                  </span>
+                  <h3 className="text-lg font-black text-white leading-tight">
                     {habit.title}
                   </h3>
-                  <p className="text-xs font-semibold text-emerald-700 mt-0.5">
-                    "{habit.tagline}"
-                  </p>
-                </div>
-
-                <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                  {habit.description}
-                </p>
-
-                {/* Kata-Kata Motivasi 7KAIH */}
-                <div className="bg-blue-50/80 border border-blue-200/80 rounded-xl p-3 text-xs text-blue-900 leading-relaxed italic flex items-start gap-2">
-                  <Quote className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="text-[10px] font-bold text-blue-800 uppercase not-italic block mb-0.5 tracking-wider">
-                      Motivasi {habit.title}:
-                    </span>
-                    <span>"{HABIT_MOTIVATIONAL_QUOTES[habit.id]}"</span>
-                  </div>
-                </div>
-
-                {/* Target Time */}
-                <div className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                  <Clock className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Waktu Ideal: {habit.targetTime}</span>
-                </div>
-
-                {/* Practical Options Preview */}
-                <div className="space-y-1.5">
-                  <p className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                    Contoh Penerapan:
-                  </p>
-                  <ul className="space-y-1">
-                    {habit.options.slice(0, 2).map((opt, i) => (
-                      <li key={i} className="text-xs text-slate-700 flex items-start gap-1.5 font-medium">
-                        <Check className="w-3 h-3 text-emerald-600 shrink-0 mt-0.5" />
-                        <span>{opt}</span>
-                      </li>
-                    ))}
-                  </ul>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="mt-6 pt-4 border-t border-slate-100 space-y-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setActiveHabitModal(habit)}
-                    className="flex-1 py-2 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-colors flex items-center justify-center gap-1"
-                  >
-                    <span>Detail & Tips</span>
-                    <ArrowRight className="w-3 h-3" />
-                  </button>
+              {/* Card Body */}
+              <div className="p-5 space-y-3.5 flex-1 flex flex-col justify-between">
+                <div className="space-y-2.5">
+                  <p className="text-xs font-bold text-emerald-700">
+                    "{habit.tagline}"
+                  </p>
 
-                  <button
-                    onClick={() => onAskAIWithTopic(`Bagaimana tips praktis bagi siswa SMA agar konsisten menerapkan kebiasaan ${habit.title}? Berikan saran psikologis dan jadwal realistis.`)}
-                    className="p-2 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition-colors"
-                    title={`Konsultasi AI tentang ${habit.title}`}
-                  >
-                    <Bot className="w-4 h-4" />
-                  </button>
+                  <p className="text-xs text-slate-700 leading-relaxed font-medium line-clamp-3">
+                    {habit.description}
+                  </p>
+
+                  {/* Kata-Kata Motivasi 7KAIH */}
+                  <div className="bg-sky-50/80 border border-sky-100 rounded-2xl p-3 text-xs text-sky-950 leading-relaxed italic flex items-start gap-2">
+                    <Quote className="w-3.5 h-3.5 text-sky-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-[10px] font-black text-sky-800 uppercase not-italic block mb-0.5 tracking-wider">
+                        Motivasi {habit.title}:
+                      </span>
+                      <span>"{HABIT_MOTIVATIONAL_QUOTES[habit.id]}"</span>
+                    </div>
+                  </div>
+
+                  {/* Practical Options Preview */}
+                  <div className="space-y-1.5 pt-1">
+                    <p className="text-[10px] font-black text-slate-700 uppercase tracking-wider">
+                      Contoh Penerapan Nyata:
+                    </p>
+                    <ul className="space-y-1">
+                      {habit.options.slice(0, 2).map((opt, i) => (
+                        <li key={i} className="text-xs text-slate-700 flex items-start gap-1.5 font-medium">
+                          <Check className="w-3 h-3 text-emerald-600 shrink-0 mt-0.5" />
+                          <span className="line-clamp-1">{opt}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
 
-                {/* Quick Check Today Button */}
-                <button
-                  onClick={() => onCheckHabit(habit.id)}
-                  className={`w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                    isDoneToday
-                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                      : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
-                  }`}
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>{isDoneToday ? 'Sudah Dilakukan Hari Ini ✓' : 'Tandai Sudah Selesai'}</span>
-                </button>
+                {/* Action Buttons */}
+                <div className="pt-3 border-t border-slate-100 space-y-2">
+                  <div className="flex items-center justify-between text-xs pb-1">
+                    <span className="font-semibold text-slate-500">Apresiasi:</span>
+                    <span className="font-black text-blue-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-100">
+                      +{habit.points} XP
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setActiveHabitModal(habit)}
+                      className="flex-1 py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-black transition-colors flex items-center justify-center gap-1 active:scale-95"
+                    >
+                      <span>Lihat Detail & Tips</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      onClick={() => onAskAIWithTopic(`Bagaimana tips praktis bagi siswa SMA agar konsisten menerapkan kebiasaan ${habit.title}? Berikan saran psikologis dan jadwal realistis.`)}
+                      className="p-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold transition-colors border border-blue-200 active:scale-95"
+                      title={`Konsultasi Asisten AI Gemini tentang ${habit.title}`}
+                    >
+                      <Bot className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Quick Check Today Button */}
+                  <button
+                    onClick={() => onCheckHabit(habit.id)}
+                    className={`w-full py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95 ${
+                      isDoneToday
+                        ? 'bg-emerald-100 text-emerald-800 border-2 border-emerald-300'
+                        : 'bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-emerald-500/20'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{isDoneToday ? 'Sudah Dilakukan Hari Ini ✓' : 'Tandai Sudah Selesai'}</span>
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -205,31 +219,64 @@ export const HabitsGuideView: React.FC<HabitsGuideViewProps> = ({
       {/* Modal for Deep Habit Insight */}
       {activeHabitModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 space-y-6 shadow-2xl border border-slate-200">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white bg-linear-to-tr ${activeHabitModal.accentColor}`}>
-                  <HabitIcon name={activeHabitModal.icon} className="w-6 h-6" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-slate-700 uppercase">
-                    Kebiasaan #{activeHabitModal.order}
+          <div className="bg-white rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 overflow-hidden">
+            {/* Modal Image Header */}
+            {activeHabitModal.image && (
+              <div className="relative aspect-16/9 w-full bg-slate-900">
+                <img
+                  src={activeHabitModal.image}
+                  alt={`Ilustrasi ${activeHabitModal.title}`}
+                  className="w-full h-full object-cover object-center"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-black/30" />
+                <button
+                  onClick={() => setActiveHabitModal(null)}
+                  className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center text-sm font-bold backdrop-blur-xs transition-colors"
+                >
+                  ✕
+                </button>
+                <div className="absolute bottom-3 left-4 right-4 text-white">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-300">
+                    Kebiasaan #{activeHabitModal.order} • {activeHabitModal.category}
                   </span>
-                  <h3 className="text-xl font-extrabold text-slate-900">
+                  <h3 className="text-xl sm:text-2xl font-black text-white leading-tight">
                     {activeHabitModal.title}
                   </h3>
-                  <span className="text-xs font-semibold text-emerald-700">
+                  <span className="text-xs font-semibold text-emerald-300">
                     {activeHabitModal.tagline}
                   </span>
                 </div>
               </div>
-              <button
-                onClick={() => setActiveHabitModal(null)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
-              >
-                ✕
-              </button>
-            </div>
+            )}
+
+            <div className="p-6 space-y-5">
+              {!activeHabitModal.image && (
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white bg-linear-to-tr ${activeHabitModal.accentColor}`}>
+                      <HabitIcon name={activeHabitModal.icon} className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-700 uppercase">
+                        Kebiasaan #{activeHabitModal.order}
+                      </span>
+                      <h3 className="text-xl font-extrabold text-slate-900">
+                        {activeHabitModal.title}
+                      </h3>
+                      <span className="text-xs font-semibold text-emerald-700">
+                        {activeHabitModal.tagline}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveHabitModal(null)}
+                    className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
 
             <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">
               {activeHabitModal.description}
@@ -300,6 +347,7 @@ export const HabitsGuideView: React.FC<HabitsGuideViewProps> = ({
             </div>
           </div>
         </div>
+      </div>
       )}
     </div>
   );

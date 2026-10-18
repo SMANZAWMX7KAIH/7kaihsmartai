@@ -1,18 +1,55 @@
 /**
  * 7KAIH SMART AI - Audio & Music Service
- * Pemutar Audio Rekaman Instrumen Resmi "Indonesia Raya"
+ * Pemutar Musik Nasionalisme Indonesia ("Bangun Pemudi Pemuda" & "Indonesia Raya")
  * Menggunakan HTMLAudioElement murni tanpa osilator buatan atau efek DSP sintetis.
  */
 
 export type PlaybackState = 'idle' | 'playing' | 'paused' | 'ended' | 'error';
+export type NationalTrackId = 'bangun_pemudi_pemuda' | 'indonesia_raya';
+
+export interface NationalTrackInfo {
+  id: NationalTrackId;
+  title: string;
+  composer: string;
+  year: string;
+  category: string;
+  srcMp3: string;
+  srcOgg?: string;
+  description: string;
+}
+
+export const NATIONAL_TRACKS: Record<NationalTrackId, NationalTrackInfo> = {
+  bangun_pemudi_pemuda: {
+    id: 'bangun_pemudi_pemuda',
+    title: 'Bangun Pemudi Pemuda',
+    composer: 'Alfred Simanjuntak',
+    year: '1943',
+    category: 'Lagu Nasional Republik Indonesia',
+    srcMp3: '/audio/bangun-pemudi-pemuda.mp3',
+    srcOgg: '/audio/bangun-pemudi-pemuda.ogg',
+    description: 'Lagu wajib nasional yang menggelorakan tekad, kepeloporan, dan integritas pemuda-pemudi Indonesia.',
+  },
+  indonesia_raya: {
+    id: 'indonesia_raya',
+    title: 'Indonesia Raya',
+    composer: 'Wage Rudolf Soepratman',
+    year: '1928',
+    category: 'Lagu Kebangsaan Republik Indonesia',
+    srcMp3: '/audio/indonesia-raya.mp3',
+    srcOgg: '/audio/indonesia-raya.ogg',
+    description: 'Rekaman instrumen orkestra resmi United States Navy Band (Karya Bebas Hak Cipta / Public Domain).',
+  },
+};
 
 export interface AudioPlayerState {
+  currentTrackId: NationalTrackId;
   playbackState: PlaybackState;
   currentTime: number;
   duration: number;
   volume: number; // 0.0 - 1.0 (default 1.0 = 100%)
   isMuted: boolean;
-  isAutoplayBlocked: boolean;
+  isAvailable: boolean; // Menandakan apakah file audio sah telah tersedia di server
+  isCheckingAvailability: boolean;
   errorMessage: string | null;
   sfxEnabled: boolean;
   sfxVolume: number;
@@ -23,12 +60,14 @@ const STORAGE_SETTINGS_KEY = '7kaih_audio_vol_settings';
 class AudioService {
   private audio: HTMLAudioElement | null = null;
   private state: AudioPlayerState = {
+    currentTrackId: 'bangun_pemudi_pemuda', // Sesuai permintaan: menggunakan lagu "Bangun Pemudi Pemuda"
     playbackState: 'idle',
     currentTime: 0,
     duration: 0,
-    volume: 1.0, // 100% volume awal normal sesuai sumber rekaman
+    volume: 1.0,
     isMuted: false,
-    isAutoplayBlocked: false,
+    isAvailable: false,
+    isCheckingAvailability: true,
     errorMessage: null,
     sfxEnabled: true,
     sfxVolume: 0.7,
@@ -36,11 +75,13 @@ class AudioService {
 
   private listeners: Set<(state: AudioPlayerState) => void> = new Set();
   private sfxCtx: AudioContext | null = null;
+  private availabilityCache: Map<string, boolean> = new Map();
 
   constructor() {
     this.loadSavedSettings();
     if (typeof window !== 'undefined') {
       this.initAudioElement();
+      this.checkCurrentTrackAvailability();
     }
   }
 
@@ -58,6 +99,9 @@ class AudioService {
         if (typeof parsed.sfxVolume === 'number') {
           this.state.sfxVolume = Math.max(0, Math.min(1, parsed.sfxVolume));
         }
+        if (parsed.currentTrackId === 'bangun_pemudi_pemuda' || parsed.currentTrackId === 'indonesia_raya') {
+          this.state.currentTrackId = parsed.currentTrackId;
+        }
       }
     } catch {}
   }
@@ -68,40 +112,79 @@ class AudioService {
         volume: this.state.volume,
         sfxEnabled: this.state.sfxEnabled,
         sfxVolume: this.state.sfxVolume,
+        currentTrackId: this.state.currentTrackId,
       }));
     } catch {}
+  }
+
+  /**
+   * Pengecekan ketersediaan berkas audio secara riil pada server
+   */
+  public async checkTrackAvailability(trackId: NationalTrackId): Promise<boolean> {
+    const track = NATIONAL_TRACKS[trackId];
+    if (this.availabilityCache.has(track.srcMp3)) {
+      return Boolean(this.availabilityCache.get(track.srcMp3));
+    }
+
+    try {
+      const res = await fetch(track.srcMp3, { method: 'HEAD' });
+      // File dianggap tersedia jika status 200/304 dan Content-Type audio
+      const contentType = res.headers.get('content-type') || '';
+      const isHtmlFallback = contentType.includes('text/html'); // Vite SPA fallback
+      const exists = res.ok && !isHtmlFallback;
+
+      this.availabilityCache.set(track.srcMp3, exists);
+      return exists;
+    } catch {
+      this.availabilityCache.set(track.srcMp3, false);
+      return false;
+    }
+  }
+
+  private async checkCurrentTrackAvailability() {
+    this.state.isCheckingAvailability = true;
+    this.notify();
+
+    const isAvailable = await this.checkTrackAvailability(this.state.currentTrackId);
+    this.state.isCheckingAvailability = false;
+    this.state.isAvailable = isAvailable;
+
+    if (!isAvailable) {
+      const track = NATIONAL_TRACKS[this.state.currentTrackId];
+      this.state.playbackState = 'idle';
+      this.state.errorMessage = `Berkas audio "${track.title}" belum tersedia di ${track.srcMp3}. Silakan tambahkan file audio yang sah.`;
+    } else {
+      this.state.errorMessage = null;
+    }
+
+    this.notify();
   }
 
   private initAudioElement() {
     if (this.audio) return;
 
-    // Singleton HTMLAudioElement memutar langsung rekaman instrumen Indonesia Raya
     this.audio = new Audio();
     this.audio.preload = 'metadata';
 
-    // Prioritaskan berkas mp3 rekaman asli di public/audio/
-    this.audio.src = `audio/indonesia-raya.mp3`;
-
-    // Volume awal 100% (1.0)
+    const currentTrack = NATIONAL_TRACKS[this.state.currentTrackId];
+    this.audio.src = currentTrack.srcMp3;
     this.audio.volume = this.state.volume;
     this.audio.muted = this.state.isMuted;
 
-    // Sinkronisasi status antarmuka langsung melalui native HTML audio events
     this.audio.addEventListener('loadedmetadata', () => {
       this.state.duration = this.audio?.duration || 0;
+      this.state.isAvailable = true;
       this.state.errorMessage = null;
       this.notify();
     });
 
     this.audio.addEventListener('playing', () => {
       this.state.playbackState = 'playing';
-      this.state.isAutoplayBlocked = false;
       this.state.errorMessage = null;
       this.notify();
     });
 
     this.audio.addEventListener('pause', () => {
-      // Hanya ubah ke paused jika bukan karena lagu selesai
       if (this.audio && !this.audio.ended) {
         this.state.playbackState = 'paused';
         this.notify();
@@ -133,19 +216,10 @@ class AudioService {
     });
 
     this.audio.addEventListener('error', () => {
-      const mediaErr = this.audio?.error;
-      let msg = 'Gagal memuat berkas audio instrumen Indonesia Raya.';
-      if (mediaErr?.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
-        // Coba alternatif ogg jika mp3 gagal
-        if (this.audio && !this.audio.src.endsWith('.ogg')) {
-          this.audio.src = `audio/indonesia-raya.ogg`;
-          this.audio.load();
-          return;
-        }
-        msg = 'Berkas audio rekaman instrumen Indonesia Raya belum ditemukan di /public/audio/indonesia-raya.mp3.';
-      }
-      this.state.playbackState = 'error';
-      this.state.errorMessage = msg;
+      const track = NATIONAL_TRACKS[this.state.currentTrackId];
+      this.state.playbackState = 'idle';
+      this.state.isAvailable = false;
+      this.state.errorMessage = `Berkas audio "${track.title}" belum tersedia di ${track.srcMp3}.`;
       this.notify();
     });
   }
@@ -164,12 +238,51 @@ class AudioService {
     return { ...this.state };
   }
 
+  public getCurrentTrack(): NationalTrackInfo {
+    return NATIONAL_TRACKS[this.state.currentTrackId];
+  }
+
   /**
-   * Putar lagu dari awal (atau jika lagu selesai)
+   * Pindah lagu (antara "Bangun Pemudi Pemuda" dan "Indonesia Raya")
+   */
+  public async switchTrack(trackId: NationalTrackId) {
+    if (this.state.currentTrackId === trackId) return;
+
+    if (this.audio) {
+      this.audio.pause();
+      this.audio.currentTime = 0;
+    }
+
+    this.state.currentTrackId = trackId;
+    this.state.playbackState = 'idle';
+    this.state.currentTime = 0;
+    this.state.duration = 0;
+    this.saveSettings();
+
+    const track = NATIONAL_TRACKS[trackId];
+    if (this.audio) {
+      this.audio.src = track.srcMp3;
+    }
+
+    await this.checkCurrentTrackAvailability();
+  }
+
+  /**
+   * Putar lagu
+   * CATATAN: Sesuai aturan sistem, audio TIDAK PERNAH diputar otomatis saat halaman dibuka.
+   * Pemutaran hanya terjadi saat pengguna menekan tombol Putar.
    */
   public async play(): Promise<boolean> {
     this.initAudioElement();
     if (!this.audio) return false;
+
+    // Jika file belum tersedia, jangan putar dan beri umpan balik jelas
+    if (!this.state.isAvailable) {
+      const track = NATIONAL_TRACKS[this.state.currentTrackId];
+      this.state.errorMessage = `Musik belum tersedia. File ${track.srcMp3} belum ditambahkan.`;
+      this.notify();
+      return false;
+    }
 
     try {
       if (this.state.playbackState === 'ended') {
@@ -177,16 +290,11 @@ class AudioService {
       }
       await this.audio.play();
       this.state.playbackState = 'playing';
-      this.state.isAutoplayBlocked = false;
       this.state.errorMessage = null;
       this.notify();
       return true;
     } catch (err: any) {
-      if (err.name === 'NotAllowedError') {
-        this.state.isAutoplayBlocked = true;
-      } else {
-        this.state.errorMessage = 'Browser belum mengizinkan pemutaran audio otomatis. Silakan klik tombol Putar.';
-      }
+      this.state.errorMessage = 'Pemutaran diblokir oleh browser. Silakan klik tombol Putar kembali.';
       this.state.playbackState = this.audio.currentTime > 0 ? 'paused' : 'idle';
       this.notify();
       return false;
@@ -204,14 +312,13 @@ class AudioService {
   }
 
   /**
-   * Lanjutkan pemutaran dari posisi terakhir (currentTime tidak berubah)
+   * Lanjutkan pemutaran dari posisi terakhir
    */
   public async resume(): Promise<boolean> {
-    if (!this.audio) return false;
+    if (!this.audio || !this.state.isAvailable) return false;
     try {
       await this.audio.play();
       this.state.playbackState = 'playing';
-      this.state.isAutoplayBlocked = false;
       this.state.errorMessage = null;
       this.notify();
       return true;
@@ -220,6 +327,18 @@ class AudioService {
       this.notify();
       return false;
     }
+  }
+
+  /**
+   * Hentikan musik sepenuhnya dan kembalikan ke awal
+   */
+  public stop() {
+    if (!this.audio) return;
+    this.audio.pause();
+    this.audio.currentTime = 0;
+    this.state.playbackState = 'idle';
+    this.state.currentTime = 0;
+    this.notify();
   }
 
   /**
@@ -250,33 +369,6 @@ class AudioService {
       return this.state.isMuted;
     }
     return false;
-  }
-
-  /**
-   * Upayakan autoplay saat website dibuka
-   */
-  public async attemptAutoplay(): Promise<boolean> {
-    this.initAudioElement();
-    if (!this.audio) return false;
-
-    try {
-      await this.audio.play();
-      this.state.playbackState = 'playing';
-      this.state.isAutoplayBlocked = false;
-      this.notify();
-      return true;
-    } catch (err: any) {
-      // Browser memblokir autoplay bersuara (Chrome/Android)
-      this.state.isAutoplayBlocked = true;
-      this.state.playbackState = 'idle';
-      this.notify();
-      return false;
-    }
-  }
-
-  public dismissAutoplayBanner() {
-    this.state.isAutoplayBlocked = false;
-    this.notify();
   }
 
   /* -------------------------------------------------------------

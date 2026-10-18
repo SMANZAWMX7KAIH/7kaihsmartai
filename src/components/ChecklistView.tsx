@@ -318,30 +318,45 @@ export const ChecklistView: React.FC<ChecklistViewProps> = ({
           return (
             <div
               key={habit.id}
-              className={`rounded-2xl border p-4 sm:p-5 transition-all duration-200 ${
+              className={`rounded-3xl border-2 p-4 sm:p-5 transition-all duration-300 shadow-xs hover:shadow-md ${
                 isDone
-                  ? 'bg-emerald-50/40 border-emerald-300 shadow-xs ring-1 ring-emerald-200/50'
-                  : 'bg-white border-slate-200 hover:border-slate-300'
+                  ? 'bg-linear-to-r from-emerald-50/70 via-white to-emerald-50/30 border-emerald-300 ring-2 ring-emerald-200/50'
+                  : 'bg-white border-slate-200 hover:border-sky-300'
               }`}
             >
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                {/* Left: Button, icon, and details */}
-                <div className="flex items-start gap-3.5 flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                {/* Left: Checkbox, Anime thumbnail, and details */}
+                <div className="flex items-start sm:items-center gap-3.5 flex-1">
                   {/* Interactive checklist button with clear toggle */}
                   <button
                     onClick={() => onToggleHabit(habit.id, !isDone)}
-                    className="mt-0.5 focus:outline-hidden transition-transform active:scale-90"
+                    className="mt-0.5 sm:mt-0 focus:outline-hidden transition-transform active:scale-90 shrink-0"
                     title={isDone ? 'Batalkan tanda kebiasaan ini' : 'Tandai sudah selesai'}
                     aria-label={`Tandai ${habit.title}`}
                   >
                     {isDone ? (
-                      <CheckCircle2 className="w-8 h-8 text-emerald-600 fill-emerald-100" />
+                      <CheckCircle2 className="w-8 h-8 sm:w-9 sm:h-9 text-emerald-600 fill-emerald-100" />
                     ) : (
-                      <Circle className="w-8 h-8 text-slate-300 hover:text-blue-500 transition-colors" />
+                      <Circle className="w-8 h-8 sm:w-9 sm:h-9 text-slate-300 hover:text-blue-500 transition-colors" />
                     )}
                   </button>
 
-                  <div className="space-y-1 flex-1">
+                  {/* Anime Thumbnail */}
+                  {habit.image && (
+                    <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden shrink-0 border border-slate-200 shadow-xs bg-slate-100">
+                      <img
+                        src={habit.image}
+                        alt={`Ilustrasi anime ${habit.title}`}
+                        className="w-full h-full object-cover object-center hover:scale-105 transition-transform duration-300"
+                        referrerPolicy="no-referrer"
+                      />
+                      <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded-md bg-slate-900/80 backdrop-blur-xs text-[9px] font-black text-white">
+                        #{habit.order}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="space-y-1 flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs font-bold text-slate-700">
                         #{habit.order}

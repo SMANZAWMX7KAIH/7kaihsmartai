@@ -1,4 +1,24 @@
 import { HabitItem, BadgeItem, HabitId } from '../types';
+import imgBangunPagi from '../assets/images/habit_bangun_pagi_1792358603556.jpg';
+import imgBeribadah from '../assets/images/habit_beribadah_1792358603334.jpg';
+import imgBerolahraga from '../assets/images/habit_berolahraga_1792358604265.jpg';
+import imgMakanSehat from '../assets/images/habit_makan_sehat_1792358618433.jpg';
+import imgGemarBelajar from '../assets/images/habit_gemar_belajar_1792358619669.jpg';
+import imgBermasyarakat from '../assets/images/habit_bermasyarakat_1792358620215.jpg';
+import imgTidurCepat from '../assets/images/habit_tidur_cepat_1792358619999.jpg';
+import imgHeroAnime from '../assets/images/bg_anime_bendera_merah_putih_1792359577913.jpg';
+
+export const HERO_ANIME_IMAGE = imgHeroAnime;
+
+export const HABIT_IMAGES: Record<HabitId, string> = {
+  bangun_pagi: imgBangunPagi,
+  beribadah: imgBeribadah,
+  berolahraga: imgBerolahraga,
+  makan_sehat: imgMakanSehat,
+  gemar_belajar: imgGemarBelajar,
+  bermasyarakat: imgBermasyarakat,
+  tidur_cepat: imgTidurCepat,
+};
 
 export const HABITS_LIST: HabitItem[] = [
   {
@@ -12,6 +32,7 @@ export const HABITS_LIST: HabitItem[] = [
     icon: 'Sunrise',
     accentColor: 'from-amber-500 to-orange-500',
     badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
+    image: imgBangunPagi,
     description: 'Membiasakan diri bangun di awal pagi sebelum matahari terbit melatih kedisiplinan diri, ketenangan pikiran, dan memberi waktu persiapan yang cukup sebelum berangkat ke sekolah tanpa tergesa-gesa.',
     benefits: [
       'Meningkatkan konsentrasi dan daya ingat saat belajar di kelas',
@@ -42,6 +63,7 @@ export const HABITS_LIST: HabitItem[] = [
     icon: 'HeartHandshake',
     accentColor: 'from-blue-600 to-indigo-600',
     badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
+    image: imgBeribadah,
     description: 'Menjalankan kewajiban ibadah sesuai agama dan keyakinan masing-masing (Sholat, Doa, Renungan Alkitab, Puja Bakti, Meditasi). Menumbuhkan akhlak mulia dan ketenangan batin dalam menghadapi dinamika masa SMA.',
     benefits: [
       'Menanamkan fondasi integritas, kejujuran, dan kepekaan nurani',
@@ -71,8 +93,9 @@ export const HABITS_LIST: HabitItem[] = [
     targetTime: 'Pagi (05.30) atau Sore (16.30)',
     points: 15,
     icon: 'Activity',
-    accentColor: 'from-emerald-500 to-teal-600',
-    badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    accentColor: 'from-rose-500 to-red-600',
+    badgeColor: 'bg-rose-100 text-rose-800 border-rose-200',
+    image: imgBerolahraga,
     description: 'Melakukan aktivitas fisik minimal 15 hingga 30 menit setiap hari untuk menjaga kebugaran jantung, kekuatan otot, pelepasan endorfin anti-stres, dan mencegah penyakit akibat gaya hidup pasif.',
     benefits: [
       'Melancarkan sirkulasi oksigen ke otak sehingga belajar lebih cepat paham',
@@ -104,6 +127,7 @@ export const HABITS_LIST: HabitItem[] = [
     icon: 'Apple',
     accentColor: 'from-green-500 to-emerald-600',
     badgeColor: 'bg-green-100 text-green-800 border-green-200',
+    image: imgMakanSehat,
     description: 'Membiasakan sarapan sebelum sekolah dengan pola gizi seimbang "Isi Piringku" (karbohidrat, protein, sayuran, dan buah), memenuhi hidrasi air putih minimal 2 liter per hari, dan membatasi konsumsi makanan olahan tinggi gula & garam.',
     benefits: [
       'Mencegah lemas, mengantuk, dan sakit maag saat jam pelajaran pagi',
@@ -135,6 +159,7 @@ export const HABITS_LIST: HabitItem[] = [
     icon: 'GraduationCap',
     accentColor: 'from-cyan-600 to-blue-700',
     badgeColor: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+    image: imgGemarBelajar,
     description: 'Menumbuhkan kecintaan belajar mandiri tanpa harus dipaksa: membaca buku literasi, mengulang materi sulit, berlatih soal ujian/UTBK, atau mempelajari keterampilan baru (coding, bahasa asing, sains teknologi).',
     benefits: [
       'Membangun pemahaman konsep mendalam bukan sekadar hafalan sesaat',
@@ -164,8 +189,9 @@ export const HABITS_LIST: HabitItem[] = [
     targetTime: 'Lingkungan Sekolah, Rumah, & Komunitas',
     points: 15,
     icon: 'Users',
-    accentColor: 'from-teal-500 to-emerald-700',
-    badgeColor: 'bg-teal-100 text-teal-800 border-teal-200',
+    accentColor: 'from-purple-600 to-violet-700',
+    badgeColor: 'bg-purple-100 text-purple-800 border-purple-200',
+    image: imgBermasyarakat,
     description: 'Menjadi agen kebaikan di lingkungan sekitar: menghormati orang tua dan guru, menyapa teman dengan santun, menjaga kebersihan ruang publik, aktif dalam kegiatan sosial/OSIS/pramuka, dan membiasakan gotong royong.',
     benefits: [
       'Melatih kepemimpinan, komunikasi antarpribadi, dan resolusi konflik',
@@ -197,6 +223,7 @@ export const HABITS_LIST: HabitItem[] = [
     icon: 'Moon',
     accentColor: 'from-indigo-600 to-purple-700',
     badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    image: imgTidurCepat,
     description: 'Tidur tepat waktu sebelum pukul 22.00 WIB untuk mendapatkan 7-8 jam istirahat pulas. Menghindari "doom-scrolling" gawai larut malam agar hormon melatonin bekerja maksimal meregenerasi sel-sel saraf otak.',
     benefits: [
       'Konsolidasi memori otak: materi yang dipelajari siang hari disimpan ke ingatan jangka panjang',

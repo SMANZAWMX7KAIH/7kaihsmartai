@@ -22,6 +22,7 @@ export interface HabitItem {
   benefits: string[];
   tips: string[];
   options: string[]; // Contoh sub-kegiatan praktis
+  image?: string;
 }
 
 export interface HabitCheckState {
