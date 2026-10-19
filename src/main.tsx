@@ -31,7 +31,7 @@ if (rootElement) {
               Terjadi Kendala Memuat Aplikasi
             </h2>
             <p style="font-size: 0.8125rem; color: #64748b; line-height: 1.5; margin: 0 0 1.25rem;">
-              Sistem mendeteksi kendala pada inisialisasi antarmuka. Silakan muat ulang atau pulihkan data awal untuk melanjutkan.
+              Sistem mendeteksi kendala pada inisialisasi antarmuka. Silakan muat ulang halaman untuk melanjutkan.
             </p>
             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
               <button onclick="window.location.reload(true);" style="width: 100%; padding: 0.75rem 1rem; background: linear-gradient(to right, #dc2626, #e11d48); color: #ffffff; border: none; border-radius: 0.75rem; font-weight: 800; font-size: 0.8125rem; cursor: pointer;">
