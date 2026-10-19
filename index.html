@@ -28,7 +28,6 @@
                 detailHtml +
                 '<div style="display:flex;flex-direction:column;gap:0.5rem;">' +
                   '<button onclick="window.location.reload(true);" style="width:100%;padding:0.75rem 1rem;background:linear-gradient(to right,#dc2626,#e11d48);color:#ffffff;border:none;border-radius:0.75rem;font-weight:800;font-size:0.8125rem;cursor:pointer;">Muat Ulang Halaman</button>' +
-                  '<button onclick="try{localStorage.clear();}catch(e){}window.location.reload(true);" style="width:100%;padding:0.75rem 1rem;background:#f1f5f9;color:#334155;border:none;border-radius:0.75rem;font-weight:700;font-size:0.75rem;cursor:pointer;">Pulihkan Data Awal</button>' +
                 '</div>' +
               '</div>' +
             '</div>';
@@ -39,7 +38,19 @@
         window.addEventListener('error', function(event) {
           var target = event.target || event.srcElement;
           var isResource = target && (target.tagName === 'SCRIPT' || target.tagName === 'LINK');
-          var msg = isResource ? ('Gagal memuat berkas aset: ' + (target.src || target.href || 'aset')) : (event.message || 'Kesalahan skrip');
+          var srcUrl = target ? (target.src || target.href || '') : '';
+          var isRawTsx = srcUrl.indexOf('main.tsx') !== -1;
+          
+          if (isRawTsx) {
+            showFallback(
+              'Publikasi GitHub Pages Perlu Diatur',
+              'GitHub Pages sedang memuat kode sumber mentah (bukan hasil build folder "dist"). Silakan buka <strong>Settings &gt; Pages &gt; Build and deployment</strong> di repositori GitHub Anda, lalu ubah <strong>Source</strong> menjadi <strong>GitHub Actions</strong> agar website otomatis menerbitkan hasil build.',
+              srcUrl
+            );
+            return;
+          }
+
+          var msg = isResource ? ('Gagal memuat berkas aset: ' + (srcUrl || 'aset')) : (event.message || 'Kesalahan skrip');
           lastErrorMessage = msg;
           showFallback('Sinkronisasi Aset Aplikasi', 'Sedang terjadi kendala saat mengunduh berkas aplikasi di peramban Anda. Silakan tekan tombol di bawah untuk memuat ulang.', msg);
         }, true);
@@ -88,6 +99,6 @@
         </div>
       </div>
     </div>
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="./src/main.tsx"></script>
   </body>
 </html>

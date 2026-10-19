@@ -39,9 +39,6 @@ if (rootElement) {
               <button onclick="window.location.reload(true);" style="width: 100%; padding: 0.75rem 1rem; background: linear-gradient(to right, #dc2626, #e11d48); color: #ffffff; border: none; border-radius: 0.75rem; font-weight: 800; font-size: 0.8125rem; cursor: pointer;">
                 Muat Ulang Halaman
               </button>
-              <button onclick="try{localStorage.clear();}catch(e){}window.location.reload(true);" style="width: 100%; padding: 0.75rem 1rem; background: #f1f5f9; color: #334155; border: none; border-radius: 0.75rem; font-weight: 700; font-size: 0.75rem; cursor: pointer;">
-                Pulihkan Data Awal
-              </button>
             </div>
           </div>
         </div>
