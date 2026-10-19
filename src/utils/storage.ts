@@ -77,29 +77,37 @@ export function calculateDayPoints(dayLog: DailyLog): number {
 
 // Sum of points across all dates in real logs
 export function calculateTotalPoints(logs: Record<string, DailyLog>): number {
+  if (!logs || typeof logs !== 'object') return 0;
   let total = 0;
   Object.values(logs).forEach((log) => {
-    total += calculateDayPoints(log);
+    if (log) {
+      total += calculateDayPoints(log);
+    }
   });
   return total;
 }
 
 // Get stored logs or initialize strictly clean (0 fake data)
 export function getDailyLogs(): Record<string, DailyLog> {
+  const todayKey = formatDateKey(new Date());
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.DAILY_LOGS);
     if (!raw) {
-      const todayKey = formatDateKey(new Date());
       const initialLogs: Record<string, DailyLog> = {
         [todayKey]: createEmptyDayLog(todayKey),
       };
-      localStorage.setItem(STORAGE_KEYS.DAILY_LOGS, JSON.stringify(initialLogs));
+      try {
+        localStorage.setItem(STORAGE_KEYS.DAILY_LOGS, JSON.stringify(initialLogs));
+      } catch {}
       return initialLogs;
     }
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed;
+    }
+    return { [todayKey]: createEmptyDayLog(todayKey) };
   } catch (e) {
     console.error('Failed to get daily logs:', e);
-    const todayKey = formatDateKey(new Date());
     return { [todayKey]: createEmptyDayLog(todayKey) };
   }
 }
@@ -114,13 +122,14 @@ export function saveDailyLogs(logs: Record<string, DailyLog>): void {
 
 export function getOrCreateDayLog(dateKey: string): DailyLog {
   const logs = getDailyLogs();
-  if (logs[dateKey]) {
+  if (logs && logs[dateKey]) {
     return logs[dateKey];
   }
 
   const newLog = createEmptyDayLog(dateKey);
-  logs[dateKey] = newLog;
-  saveDailyLogs(logs);
+  const updatedLogs = logs || {};
+  updatedLogs[dateKey] = newLog;
+  saveDailyLogs(updatedLogs);
   return newLog;
 }
 
@@ -157,10 +166,14 @@ export function toggleHabitCheck(
 export function getStudentProfile(): StudentProfile {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.STUDENT_PROFILE);
-    if (!raw) return INITIAL_STUDENT_PROFILE;
-    return JSON.parse(raw);
+    if (!raw) return { ...INITIAL_STUDENT_PROFILE };
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      return { ...INITIAL_STUDENT_PROFILE, ...parsed };
+    }
+    return { ...INITIAL_STUDENT_PROFILE };
   } catch (e) {
-    return INITIAL_STUDENT_PROFILE;
+    return { ...INITIAL_STUDENT_PROFILE };
   }
 }
 
@@ -174,12 +187,18 @@ export function getBadges(): BadgeItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.BADGES);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEYS.BADGES, JSON.stringify(INITIAL_BADGES));
-      return INITIAL_BADGES;
+      try {
+        localStorage.setItem(STORAGE_KEYS.BADGES, JSON.stringify(INITIAL_BADGES));
+      } catch {}
+      return [...INITIAL_BADGES];
     }
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed;
+    }
+    return [...INITIAL_BADGES];
   } catch (e) {
-    return INITIAL_BADGES;
+    return [...INITIAL_BADGES];
   }
 }
 
@@ -198,6 +217,8 @@ export function checkAndUnlockBadges(
   const badges = getBadges();
   let changed = false;
 
+  const safeLogs = (logs && typeof logs === 'object') ? logs : {};
+
   const updated = badges.map((badge) => {
     if (badge.unlocked) return badge;
 
@@ -211,8 +232,8 @@ export function checkAndUnlockBadges(
 
     if (badge.id === 'disiplin_emas') {
       // Check if any date has all 7 habits completed
-      const hasPerfectDay = Object.values(logs).some((l) => {
-        return HABITS_LIST.filter((h) => l.habits?.[h.id]?.completed).length === 7;
+      const hasPerfectDay = Object.values(safeLogs).some((l) => {
+        return HABITS_LIST.filter((h) => l?.habits?.[h.id]?.completed).length === 7;
       });
       if (hasPerfectDay) shouldUnlock = true;
     }
@@ -236,6 +257,7 @@ export function checkAndUnlockBadges(
 
 // Calculate streak based strictly on recorded user entries
 export function calculateStreak(logs: Record<string, DailyLog>): number {
+  if (!logs || typeof logs !== 'object') return 0;
   let streak = 0;
   const today = new Date();
 
@@ -312,6 +334,7 @@ export function getWeeklyTrendData(logs: Record<string, DailyLog>): {
   hasAnyRecordedData: boolean;
   totalCompletedInWeek: number;
 } {
+  const safeLogs = (logs && typeof logs === 'object') ? logs : {};
   const today = new Date();
   const dayNamesShort = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
   const days = [];
@@ -322,7 +345,7 @@ export function getWeeklyTrendData(logs: Record<string, DailyLog>): {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
     const key = formatDateKey(d);
-    const log = logs[key];
+    const log = safeLogs[key];
 
     let count = 0;
     let points = 0;

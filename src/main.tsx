@@ -5,9 +5,14 @@ import './index.css';
 
 const rootElement = document.getElementById('root');
 if (rootElement) {
-  createRoot(rootElement).render(
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  );
+  try {
+    rootElement.setAttribute('data-loaded', 'true');
+    createRoot(rootElement).render(
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    );
+  } catch (err) {
+    console.error('Fatal initialization error:', err);
+  }
 }

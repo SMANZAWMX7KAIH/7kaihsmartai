@@ -72,12 +72,12 @@ export const ChecklistView: React.FC<ChecklistViewProps> = ({
 
   const handleOpenNoteModal = (habitId: HabitId) => {
     setEditingNotesHabitId(habitId);
-    setTempNoteText(dayLog.habits[habitId]?.notes || '');
+    setTempNoteText(dayLog?.habits?.[habitId]?.notes || '');
   };
 
   const handleSaveNote = () => {
     if (editingNotesHabitId) {
-      const currentState = dayLog.habits[editingNotesHabitId];
+      const currentState = dayLog?.habits?.[editingNotesHabitId];
       onToggleHabit(
         editingNotesHabitId, 
         currentState?.completed ?? false, 

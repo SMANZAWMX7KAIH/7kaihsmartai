@@ -282,18 +282,22 @@ class AudioService {
       const mediaErr = this.audio?.error;
       let msg = 'Gagal memuat berkas audio.';
       if (mediaErr) {
+        // Gunakan perbandingan kode numerik standar HTML MediaError untuk keamanan peramban mobile
         switch (mediaErr.code) {
-          case MediaError.MEDIA_ERR_ABORTED:
+          case 1: // MEDIA_ERR_ABORTED
             msg = 'Pemutaran audio dibatalkan oleh peramban.';
             break;
-          case MediaError.MEDIA_ERR_NETWORK:
+          case 2: // MEDIA_ERR_NETWORK
             msg = 'Koneksi jaringan terputus saat mengunduh audio.';
             break;
-          case MediaError.MEDIA_ERR_DECODE:
+          case 3: // MEDIA_ERR_DECODE
             msg = 'Format audio rusak atau tidak dapat didekode oleh peramban.';
             break;
-          case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+          case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
             msg = `Berkas audio tidak ditemukan (HTTP 404). Pastikan berkas tersedia di jalur ${NATIONAL_TRACKS[this.state.currentTrackId].srcMp3}.`;
+            break;
+          default:
+            msg = 'Kendala pemutaran audio pada peramban perangkat.';
             break;
         }
       }
@@ -306,12 +310,22 @@ class AudioService {
 
   public subscribe(fn: (state: AudioPlayerState) => void): () => void {
     this.listeners.add(fn);
-    fn({ ...this.state });
+    try {
+      fn({ ...this.state });
+    } catch (e) {
+      console.warn('Initial subscriber call caught:', e);
+    }
     return () => this.listeners.delete(fn);
   }
 
   private notify() {
-    this.listeners.forEach((fn) => fn({ ...this.state }));
+    this.listeners.forEach((fn) => {
+      try {
+        fn({ ...this.state });
+      } catch (e) {
+        console.warn('Audio listener notification caught:', e);
+      }
+    });
   }
 
   public getState(): AudioPlayerState {

@@ -15,6 +15,34 @@ import React, { useEffect, useRef } from 'react';
  * 5. Mendukung 'prefers-reduced-motion' dan hemat daya di HP maupun desktop.
  */
 
+// Helper fungsi gambar persegi melengkung (roundRect) dengan fallback penuh untuk peramban Android lama
+function drawRoundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  radii: number | number[] = 0
+) {
+  if (typeof (ctx as any).roundRect === 'function') {
+    try {
+      (ctx as any).roundRect(x, y, w, h, radii);
+      return;
+    } catch {}
+  }
+  let r = typeof radii === 'number' ? radii : (Array.isArray(radii) ? radii[0] || 0 : 0);
+  r = Math.min(Math.abs(r), Math.abs(w) / 2, Math.abs(h) / 2);
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+}
+
 export const IndonesianStudentsBackground: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -29,24 +57,45 @@ export const IndonesianStudentsBackground: React.FC = () => {
     let height = (canvas.height = window.innerHeight);
     let time = 0;
 
-    // Deteksi prefers-reduced-motion
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    let isReducedMotion = mediaQuery.matches;
+    // Deteksi prefers-reduced-motion kompatibel dengan peramban HP Android lama
+    let isReducedMotion = false;
+    let mediaQuery: MediaQueryList | null = null;
+    try {
+      if (typeof window !== 'undefined' && window.matchMedia) {
+        mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+        isReducedMotion = Boolean(mediaQuery.matches);
+      }
+    } catch {}
 
-    const handleMotionChange = (e: MediaQueryListEvent) => {
-      isReducedMotion = e.matches;
+    const handleMotionChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      isReducedMotion = Boolean(e.matches);
     };
-    mediaQuery.addEventListener('change', handleMotionChange);
+
+    if (mediaQuery) {
+      if (typeof mediaQuery.addEventListener === 'function') {
+        mediaQuery.addEventListener('change', handleMotionChange);
+      } else if (typeof (mediaQuery as any).addListener === 'function') {
+        (mediaQuery as any).addListener(handleMotionChange);
+      }
+    }
 
     const handleResize = () => {
       if (!canvas) return;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      width = window.innerWidth;
-      height = window.innerHeight;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      ctx.resetTransform();
-      ctx.scale(dpr, dpr);
+      try {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        if (typeof ctx.resetTransform === 'function') {
+          ctx.resetTransform();
+        } else {
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+        }
+        ctx.scale(dpr, dpr);
+      } catch (e) {
+        console.warn('Canvas resize error caught:', e);
+      }
     };
 
     handleResize();
@@ -208,21 +257,21 @@ export const IndonesianStudentsBackground: React.FC = () => {
       // Kaki & Celana Abu-abu SMA
       ctx.fillStyle = '#64748b'; // Abu-abu seragam SMA
       ctx.beginPath();
-      ctx.roundRect(-22, -40 + breathY, 18, 75, 4);
-      ctx.roundRect(4, -40 + breathY, 18, 75, 4);
+      drawRoundRect(ctx, -22, -40 + breathY, 18, 75, 4);
+      drawRoundRect(ctx, 4, -40 + breathY, 18, 75, 4);
       ctx.fill();
 
       // Sepatu hitam sekolah rapi
       ctx.fillStyle = '#1e293b';
       ctx.beginPath();
-      ctx.roundRect(-24, 30 + breathY, 22, 14, [4, 8, 4, 4]);
-      ctx.roundRect(2, 30 + breathY, 22, 14, [4, 8, 4, 4]);
+      drawRoundRect(ctx, -24, 30 + breathY, 22, 14, 4);
+      drawRoundRect(ctx, 2, 30 + breathY, 22, 14, 4);
       ctx.fill();
 
       // Kemeja Putih Siswa
       ctx.fillStyle = '#f8fafc';
       ctx.beginPath();
-      ctx.roundRect(-28, -125 + breathY, 56, 90, [8, 8, 2, 2]);
+      drawRoundRect(ctx, -28, -125 + breathY, 56, 90, 8);
       ctx.fill();
       ctx.strokeStyle = '#e2e8f0';
       ctx.lineWidth = 1.5;
@@ -421,14 +470,14 @@ export const IndonesianStudentsBackground: React.FC = () => {
 
       ctx.fillStyle = '#1e293b';
       ctx.beginPath();
-      ctx.roundRect(-20, 24 + breathY, 15, 12, [3, 7, 3, 3]);
-      ctx.roundRect(6, 24 + breathY, 15, 12, [3, 7, 3, 3]);
+      drawRoundRect(ctx, -20, 24 + breathY, 15, 12, 3);
+      drawRoundRect(ctx, 6, 24 + breathY, 15, 12, 3);
       ctx.fill();
 
       // Kemeja Putih Siswi
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.roundRect(-24, -120 + breathY, 48, 78, [6, 6, 2, 2]);
+      drawRoundRect(ctx, -24, -120 + breathY, 48, 78, 6);
       ctx.fill();
       ctx.strokeStyle = '#e2e8f0';
       ctx.lineWidth = 1.2;
@@ -465,7 +514,7 @@ export const IndonesianStudentsBackground: React.FC = () => {
       // Lengan baju putih
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.roundRect(0, -8, 38, 12, 6);
+      drawRoundRect(ctx, 0, -8, 38, 12, 6);
       ctx.fill();
 
       // Telapak tangan memegang tangkai bendera
@@ -489,7 +538,7 @@ export const IndonesianStudentsBackground: React.FC = () => {
       // Tangan kiri di samping tubuh dengan anggun
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.roundRect(-26, -112 + breathY, 12, 42, 6);
+      drawRoundRect(ctx, -26, -112 + breathY, 12, 42, 6);
       ctx.fill();
       ctx.fillStyle = '#fbcfe8';
       ctx.beginPath();
@@ -591,20 +640,20 @@ export const IndonesianStudentsBackground: React.FC = () => {
       // Rok Panjang Abu-abu SMA
       ctx.fillStyle = '#64748b';
       ctx.beginPath();
-      ctx.roundRect(-24, -30 + breathY, 48, 65, 4);
+      drawRoundRect(ctx, -24, -30 + breathY, 48, 65, 4);
       ctx.fill();
 
       // Sepatu hitam rapi
       ctx.fillStyle = '#0f172a';
       ctx.beginPath();
-      ctx.roundRect(-18, 30 + breathY, 14, 10, [3, 6, 2, 2]);
-      ctx.roundRect(4, 30 + breathY, 14, 10, [3, 6, 2, 2]);
+      drawRoundRect(ctx, -18, 30 + breathY, 14, 10, 3);
+      drawRoundRect(ctx, 4, 30 + breathY, 14, 10, 3);
       ctx.fill();
 
       // Kemeja Lengan Panjang Putih
       ctx.fillStyle = '#f8fafc';
       ctx.beginPath();
-      ctx.roundRect(-26, -118 + breathY, 52, 90, 8);
+      drawRoundRect(ctx, -26, -118 + breathY, 52, 90, 8);
       ctx.fill();
 
       // Jilbab Putih Rapi Siswi SMA Indonesia
@@ -667,7 +716,7 @@ export const IndonesianStudentsBackground: React.FC = () => {
       // Buku Bersampul Merah Putih
       ctx.fillStyle = '#dc2626';
       ctx.beginPath();
-      ctx.roundRect(-18, -100 + breathY, 36, 26, 3);
+      drawRoundRect(ctx, -18, -100 + breathY, 36, 26, 3);
       ctx.fill();
 
       // Lembaran halaman putih
@@ -693,104 +742,108 @@ export const IndonesianStudentsBackground: React.FC = () => {
 
     // Loop Animasi Utama (60 FPS Silky Smooth)
     const render = () => {
-      time += isReducedMotion ? 0.005 : 0.024;
+      try {
+        time += isReducedMotion ? 0.005 : 0.024;
 
-      ctx.clearRect(0, 0, width, height);
+        ctx.clearRect(0, 0, width, height);
 
-      // 1. Langit Biru Cerah Nusantara (Indonesian Morning Sky Gradient)
-      const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
-      skyGrad.addColorStop(0, '#5ea2f8'); // Biru langit cerah
-      skyGrad.addColorStop(0.35, '#93c5fd'); // Biru muda cerah
-      skyGrad.addColorStop(0.65, '#dbeafe'); // Biru pastel
-      skyGrad.addColorStop(1, '#f8fafc'); // Putih lembut
-      ctx.fillStyle = skyGrad;
-      ctx.fillRect(0, 0, width, height);
+        // 1. Langit Biru Cerah Nusantara (Indonesian Morning Sky Gradient)
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
+        skyGrad.addColorStop(0, '#5ea2f8'); // Biru langit cerah
+        skyGrad.addColorStop(0.35, '#93c5fd'); // Biru muda cerah
+        skyGrad.addColorStop(0.65, '#dbeafe'); // Biru pastel
+        skyGrad.addColorStop(1, '#f8fafc'); // Putih lembut
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, width, height);
 
-      // Sinar Matahari Pagi Hangat di Kanan Atas
-      const sunX = width * 0.88;
-      const sunY = 75;
-      const sunGrad = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, Math.max(width, height) * 0.6);
-      sunGrad.addColorStop(0, 'rgba(254, 240, 138, 0.4)');
-      sunGrad.addColorStop(0.3, 'rgba(253, 224, 71, 0.15)');
-      sunGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-      ctx.fillStyle = sunGrad;
-      ctx.fillRect(0, 0, width, height);
+        // Sinar Matahari Pagi Hangat di Kanan Atas
+        const sunX = width * 0.88;
+        const sunY = 75;
+        const sunGrad = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, Math.max(width, height) * 0.6);
+        sunGrad.addColorStop(0, 'rgba(254, 240, 138, 0.4)');
+        sunGrad.addColorStop(0.3, 'rgba(253, 224, 71, 0.15)');
+        sunGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = sunGrad;
+        ctx.fillRect(0, 0, width, height);
 
-      // 2. Awan Kartun Berarak Lembut
-      clouds.forEach((cloud) => {
-        cloud.x += cloud.speed;
-        if (cloud.x > width + 100) {
-          cloud.x = -120;
-        }
-        drawCartoonCloud(cloud.x, cloud.y, cloud.scale);
-      });
+        // 2. Awan Kartun Berarak Lembut
+        clouds.forEach((cloud) => {
+          cloud.x += cloud.speed;
+          if (cloud.x > width + 100) {
+            cloud.x = -120;
+          }
+          drawCartoonCloud(cloud.x, cloud.y, cloud.scale);
+        });
 
-      // 3. Bukit Hijau Bergelombang di Horizon (Indonesian Lush Rolling Hills)
-      // Bukit Jauh
-      ctx.fillStyle = 'rgba(187, 247, 208, 0.55)';
-      ctx.beginPath();
-      ctx.moveTo(0, height);
-      ctx.lineTo(0, height * 0.72);
-      ctx.bezierCurveTo(width * 0.25, height * 0.68, width * 0.65, height * 0.76, width, height * 0.7);
-      ctx.lineTo(width, height);
-      ctx.closePath();
-      ctx.fill();
-
-      // Bukit Depan (Lebih cerah & segar)
-      ctx.fillStyle = 'rgba(134, 239, 172, 0.65)';
-      ctx.beginPath();
-      ctx.moveTo(0, height);
-      ctx.lineTo(0, height * 0.82);
-      ctx.bezierCurveTo(width * 0.35, height * 0.76, width * 0.75, height * 0.85, width, height * 0.79);
-      ctx.lineTo(width, height);
-      ctx.closePath();
-      ctx.fill();
-
-      // 4. Partikel Cahaya Semangat & Binar Keemasan
-      sparkles.forEach((s) => {
-        s.y -= s.speed;
-        if (s.y < 0) s.y = height * 0.85;
-        const alpha = Math.sin(time * 3 + s.phase) * 0.35 + 0.35;
-        ctx.fillStyle = `rgba(251, 191, 36, ${alpha})`;
+        // 3. Bukit Hijau Bergelombang di Horizon (Indonesian Lush Rolling Hills)
+        // Bukit Jauh
+        ctx.fillStyle = 'rgba(187, 247, 208, 0.55)';
         ctx.beginPath();
-        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx.moveTo(0, height);
+        ctx.lineTo(0, height * 0.72);
+        ctx.bezierCurveTo(width * 0.25, height * 0.68, width * 0.65, height * 0.76, width, height * 0.7);
+        ctx.lineTo(width, height);
+        ctx.closePath();
         ctx.fill();
-      });
 
-      // 5. Perhitungan Siklus Kedipan Mata Kartun Alami
-      // Setiap ~3.5 detik mata berkedip cepat
-      const blinkCycle = (time * 0.5) % 3.5;
-      const blinkProgress = blinkCycle > 3.35 ? 1 : 0;
+        // Bukit Depan (Lebih cerah & segar)
+        ctx.fillStyle = 'rgba(134, 239, 172, 0.65)';
+        ctx.beginPath();
+        ctx.moveTo(0, height);
+        ctx.lineTo(0, height * 0.82);
+        ctx.bezierCurveTo(width * 0.35, height * 0.76, width * 0.75, height * 0.85, width, height * 0.79);
+        ctx.lineTo(width, height);
+        ctx.closePath();
+        ctx.fill();
 
-      // 6. Penempatan Dinamis Murid-Murid Indonesia Berseragam Sekolah
-      // Diposisikan di sisi kanan bawah dan sisi halaman agar elegan dan tidak menutupi konten
-      const isMobile = width < 768;
+        // 4. Partikel Cahaya Semangat & Binar Keemasan
+        sparkles.forEach((s) => {
+          s.y -= s.speed;
+          if (s.y < 0) s.y = height * 0.85;
+          const alpha = Math.sin(time * 3 + s.phase) * 0.35 + 0.35;
+          ctx.fillStyle = `rgba(251, 191, 36, ${alpha})`;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+          ctx.fill();
+        });
 
-      if (isMobile) {
-        // Tampilan Layar HP: Ditempatkan di pojok kanan bawah secara proporsional
-        const mobileScale = 0.82;
-        const anchorX = width * 0.82;
-        const anchorY = height * 0.94;
+        // 5. Perhitungan Siklus Kedipan Mata Kartun Alami
+        // Setiap ~3.5 detik mata berkedip cepat
+        const blinkCycle = (time * 0.5) % 3.5;
+        const blinkProgress = blinkCycle > 3.35 ? 1 : 0;
 
-        // Siswa Pembawa Tiang Bendera Merah Putih
-        drawBoyWithBigFlag(anchorX, anchorY, mobileScale, time, blinkProgress);
-        // Siswi dengan Bendera Kecil di sampingnya
-        drawGirlWithSmallFlag(anchorX - 70, anchorY + 12, mobileScale * 0.92, time, blinkProgress);
-      } else {
-        // Tampilan Layar Komputer / Tablet:
-        // Komposisi 3 Murid Ceria di sisi kanan bawah dengan bendera berkibar gagah
-        const baseScale = 1.05;
-        const groupRightX = width * 0.86;
-        const groupBottomY = height * 0.96;
+        // 6. Penempatan Dinamis Murid-Murid Indonesia Berseragam Sekolah
+        // Diposisikan di sisi kanan bawah dan sisi halaman agar elegan dan tidak menutupi konten
+        const isMobile = width < 768;
 
-        // Siswa Laki-laki memegang tiang bendera Merah Putih utama
-        drawBoyWithBigFlag(groupRightX, groupBottomY, baseScale, time, blinkProgress);
+        if (isMobile) {
+          // Tampilan Layar HP: Ditempatkan di pojok kanan bawah secara proporsional
+          const mobileScale = 0.82;
+          const anchorX = width * 0.82;
+          const anchorY = height * 0.94;
 
-        // Siswi Ceria memegang bendera tangan kecil & melambai
-        drawGirlWithSmallFlag(groupRightX - 105, groupBottomY + 15, baseScale * 0.96, time, blinkProgress);
+          // Siswa Pembawa Tiang Bendera Merah Putih
+          drawBoyWithBigFlag(anchorX, anchorY, mobileScale, time, blinkProgress);
+          // Siswi dengan Bendera Kecil di sampingnya
+          drawGirlWithSmallFlag(anchorX - 70, anchorY + 12, mobileScale * 0.92, time, blinkProgress);
+        } else {
+          // Tampilan Layar Komputer / Tablet:
+          // Komposisi 3 Murid Ceria di sisi kanan bawah dengan bendera berkibar gagah
+          const baseScale = 1.05;
+          const groupRightX = width * 0.86;
+          const groupBottomY = height * 0.96;
 
-        // Siswi Berjilbab Rapi memegang Buku Panduan 7 Kebiasaan
-        drawHijabStudentWithBook(groupRightX - 200, groupBottomY + 20, baseScale * 0.94, time, blinkProgress);
+          // Siswa Laki-laki memegang tiang bendera Merah Putih utama
+          drawBoyWithBigFlag(groupRightX, groupBottomY, baseScale, time, blinkProgress);
+
+          // Siswi Ceria memegang bendera tangan kecil & melambai
+          drawGirlWithSmallFlag(groupRightX - 105, groupBottomY + 15, baseScale * 0.96, time, blinkProgress);
+
+          // Siswi Berjilbab Rapi memegang Buku Panduan 7 Kebiasaan
+          drawHijabStudentWithBook(groupRightX - 200, groupBottomY + 20, baseScale * 0.94, time, blinkProgress);
+        }
+      } catch (renderError) {
+        console.warn('Silent canvas render frame catch:', renderError);
       }
 
       animationFrameId = requestAnimationFrame(render);
@@ -801,7 +854,13 @@ export const IndonesianStudentsBackground: React.FC = () => {
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener('resize', handleResize);
-      mediaQuery.removeEventListener('change', handleMotionChange);
+      if (mediaQuery) {
+        if (typeof mediaQuery.removeEventListener === 'function') {
+          mediaQuery.removeEventListener('change', handleMotionChange);
+        } else if (typeof (mediaQuery as any).removeListener === 'function') {
+          (mediaQuery as any).removeListener(handleMotionChange);
+        }
+      }
     };
   }, []);
 
