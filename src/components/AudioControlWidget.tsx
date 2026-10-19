@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Volume2, 
   VolumeX, 
@@ -13,7 +13,9 @@ import {
   Info,
   Flag,
   FileQuestion,
-  Disc3
+  Disc3,
+  Upload,
+  RefreshCw
 } from 'lucide-react';
 import { 
   audioService, 
@@ -32,15 +34,12 @@ function formatTime(sec: number): string {
 export const AudioControlWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [playerState, setPlayerState] = useState<AudioPlayerState>(() => audioService.getState());
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Berlangganan status audio yang disinkronkan langsung dari event HTMLAudioElement
     const unsubscribe = audioService.subscribe((state) => {
       setPlayerState(state);
     });
-
-    // PENTING: Sesuai instruksi nomor 6, TIDAK ADA pemutaran otomatis saat halaman dibuka.
-    // Pengguna harus secara sadar menekan tombol Putar.
 
     return () => {
       unsubscribe();
@@ -56,6 +55,8 @@ export const AudioControlWidget: React.FC = () => {
     isMuted, 
     isAvailable, 
     isCheckingAvailability,
+    isCustomFileLoaded,
+    customFileName,
     errorMessage, 
     sfxEnabled, 
     sfxVolume 
@@ -67,7 +68,10 @@ export const AudioControlWidget: React.FC = () => {
 
   // Handler tombol utama: Putar / Jeda / Lanjutkan
   const handlePrimaryButtonClick = async () => {
-    if (!isAvailable) return;
+    if (!isAvailable) {
+      setIsOpen(true);
+      return;
+    }
     if (isPlaying) {
       audioService.pause();
     } else if (isPaused) {
@@ -83,6 +87,17 @@ export const AudioControlWidget: React.FC = () => {
 
   const handleSwitchTrack = (trackId: NationalTrackId) => {
     audioService.switchTrack(trackId);
+  };
+
+  const handleRefreshCheck = async () => {
+    await audioService.checkCurrentTrackAvailability(true);
+  };
+
+  const handleUserFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      audioService.loadUserAudioFile(file);
+    }
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -109,7 +124,7 @@ export const AudioControlWidget: React.FC = () => {
 
   // Label tombol utama sesuai status riil
   const getButtonLabel = () => {
-    if (!isAvailable) return 'Musik Belum Tersedia';
+    if (!isAvailable) return 'Buka Panduan Musik';
     if (isPlaying) return '⏸ JEDA';
     if (isPaused) return '▶ LANJUTKAN';
     return `▶ PUTAR ${currentTrack.title.toUpperCase()}`;
@@ -118,6 +133,7 @@ export const AudioControlWidget: React.FC = () => {
   // Teks status ketersediaan & pemutaran
   const getStatusText = () => {
     if (isCheckingAvailability) return 'Memeriksa berkas...';
+    if (isCustomFileLoaded) return 'Berkas lokal siap 🎵';
     if (!isAvailable) return 'Musik belum tersedia';
     if (playbackState === 'playing') return 'Sedang diputar 🎵';
     if (playbackState === 'paused') return 'Dijeda ⏸️';
@@ -150,7 +166,7 @@ export const AudioControlWidget: React.FC = () => {
           )}
 
           <div className="flex items-center gap-1.5 text-xs font-bold">
-            <span className="hidden sm:inline font-extrabold">{currentTrack.title}</span>
+            <span className="hidden sm:inline font-extrabold">{isCustomFileLoaded && customFileName ? customFileName : currentTrack.title}</span>
             <span className="sm:hidden font-extrabold">Musik</span>
             <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-red-100 text-red-700 border border-red-200">
               🇮🇩
@@ -161,23 +177,22 @@ export const AudioControlWidget: React.FC = () => {
         {/* Quick Play/Pause/Lanjutkan Button */}
         <button
           onClick={handlePrimaryButtonClick}
-          disabled={!isAvailable}
-          className={`px-3 py-2.5 rounded-full shadow-lg border text-xs font-black transition-all flex items-center gap-1.5 active:scale-95 ${
+          className={`px-3 py-2.5 rounded-full shadow-lg border text-xs font-black transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer ${
             !isAvailable
-              ? 'bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed opacity-75'
+              ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-300'
               : isPlaying
-              ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 border-amber-400 cursor-pointer'
+              ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 border-amber-400 shadow-amber-500/25'
               : isPaused
-              ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 cursor-pointer shadow-emerald-500/20'
-              : 'bg-linear-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white border-red-500 cursor-pointer shadow-red-500/25'
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-500 shadow-emerald-500/20'
+              : 'bg-linear-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white border-red-500 shadow-red-500/25'
           }`}
           title={getButtonLabel()}
           aria-label={getButtonLabel()}
         >
           {!isAvailable ? (
             <>
-              <FileQuestion className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline text-[11px]">Belum Tersedia</span>
+              <FileQuestion className="w-3.5 h-3.5 text-amber-700" />
+              <span className="hidden sm:inline text-[11px]">Cek Status</span>
             </>
           ) : isPlaying ? (
             <>
@@ -245,7 +260,7 @@ export const AudioControlWidget: React.FC = () => {
                     }`}
                   >
                     <span className="truncate w-full">Bangun Pemudi Pemuda</span>
-                    <span className="text-[10px] font-semibold text-slate-700">Alfred Simanjuntak</span>
+                    <span className="text-[10px] font-semibold text-slate-500">Alfred Simanjuntak</span>
                   </button>
 
                   <button
@@ -257,7 +272,7 @@ export const AudioControlWidget: React.FC = () => {
                     }`}
                   >
                     <span className="truncate w-full">Indonesia Raya</span>
-                    <span className="text-[10px] font-semibold text-slate-700">W.R. Soepratman</span>
+                    <span className="text-[10px] font-semibold text-slate-500">W.R. Soepratman</span>
                   </button>
                 </div>
               </div>
@@ -265,7 +280,7 @@ export const AudioControlWidget: React.FC = () => {
               {/* Status Box & Track Card */}
               <div className={`p-4 sm:p-5 rounded-2xl border-2 space-y-3.5 transition-all ${
                 !isAvailable
-                  ? 'bg-amber-50/70 border-amber-200'
+                  ? 'bg-amber-50/70 border-amber-300'
                   : isPlaying
                   ? 'bg-linear-to-b from-red-50/50 to-white border-red-200 shadow-sm'
                   : 'bg-slate-50 border-slate-200'
@@ -276,7 +291,7 @@ export const AudioControlWidget: React.FC = () => {
                       {currentTrack.category}
                     </span>
                     <h4 className="text-base sm:text-lg font-black text-slate-900 leading-tight">
-                      {currentTrack.title}
+                      {isCustomFileLoaded && customFileName ? customFileName : currentTrack.title}
                     </h4>
                     <p className="text-xs text-slate-600 font-semibold">
                       Ciptaan: {currentTrack.composer} ({currentTrack.year})
@@ -299,120 +314,218 @@ export const AudioControlWidget: React.FC = () => {
                   {currentTrack.description}
                 </p>
 
-                {/* Notice jika file belum tersedia */}
+                {/* Pesan Error / Keterangan Transparan jika file belum ada di server */}
                 {!isAvailable && (
-                  <div className="p-3.5 bg-amber-100/80 border border-amber-300 rounded-xl text-xs text-amber-950 space-y-1.5 leading-relaxed">
+                  <div className="p-4 bg-amber-100/90 border-2 border-amber-300 rounded-2xl text-xs text-amber-950 space-y-3 leading-relaxed">
                     <div className="flex items-center gap-2 font-black text-amber-900">
-                      <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
-                      <span>Musik Belum Tersedia di Sistem</span>
+                      <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0" />
+                      <span className="text-sm">Pemberitahuan Berkas Audio:</span>
                     </div>
-                    <p className="font-medium text-[11px]">
-                      Sesuai ketentuan integritas audio, file rekaman resmi untuk lagu <strong>"{currentTrack.title}"</strong> belum ditambahkan ke folder <code className="px-1.5 py-0.5 rounded bg-white font-mono font-bold text-amber-900 text-[10px]">{currentTrack.srcMp3}</code>.
-                    </p>
-                    <p className="text-[11px] text-amber-800 font-semibold">
-                      Struktur pemutar telah disiapkan dan tombol putar akan aktif secara otomatis begitu berkas audio yang sah ditambahkan.
-                    </p>
+
+                    <div className="space-y-1 text-xs text-slate-800">
+                      <p>
+                        Berkas rekaman audio untuk <strong>"{currentTrack.title}"</strong> belum ditemukan di folder proyek:
+                      </p>
+                      <div className="p-2 rounded-xl bg-white/90 font-mono text-[11px] text-amber-950 border border-amber-200 break-all font-bold">
+                        📁 {currentTrack.expectedFile}
+                      </div>
+                      <p className="text-[11px] text-slate-600 pt-1">
+                        Jalur URL browser: <code className="bg-amber-200/60 px-1 py-0.5 rounded font-mono">{currentTrack.srcMp3}</code> (kompatibel GitHub Pages & Android).
+                      </p>
+                    </div>
+
+                    {/* Opsi Tindakan Pengguna */}
+                    <div className="pt-2 border-t border-amber-300/80 space-y-2">
+                      <p className="text-xs font-bold text-slate-900">
+                        Pilihan yang dapat Anda lakukan sekarang:
+                      </p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {/* Tombol Unggah / Pilih File Lokal */}
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          className="w-full py-2.5 px-3 rounded-xl bg-white hover:bg-slate-50 text-blue-700 border border-blue-300 font-extrabold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Upload className="w-4 h-4 text-blue-600" />
+                          <span>Pilih MP3 dari Perangkat</span>
+                        </button>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="audio/mp3,audio/*"
+                          className="hidden"
+                          onChange={handleUserFileUpload}
+                        />
+
+                        {/* Tombol Putar Indonesia Raya yang sudah tersedia */}
+                        <button
+                          onClick={() => handleSwitchTrack('indonesia_raya')}
+                          className="w-full py-2.5 px-3 rounded-xl bg-linear-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-extrabold text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-white" />
+                          <span>Putar Indonesia Raya 🇮🇩</span>
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={handleRefreshCheck}
+                        disabled={isCheckingAvailability}
+                        className="w-full py-2 px-3 rounded-xl bg-amber-200/70 hover:bg-amber-200 text-amber-900 font-bold text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isCheckingAvailability ? 'animate-spin' : ''}`} />
+                        <span>Cek Ulang Ketersediaan di Server</span>
+                      </button>
+                    </div>
                   </div>
                 )}
 
-                {/* Progress bar visual jika file tersedia */}
-                {isAvailable && (
-                  <div className="space-y-1.5 pt-1">
-                    <div className="flex justify-between items-center text-xs font-mono font-bold text-slate-700">
-                      <span>{formatTime(currentTime)}</span>
-                      <span>{formatTime(duration)}</span>
-                    </div>
-
-                    <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
-                      <div 
-                        className="bg-linear-to-r from-red-600 to-rose-600 h-2.5 rounded-full transition-all duration-200"
-                        style={{ 
-                          width: `${duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0}%` 
-                        }}
-                      />
-                    </div>
+                {/* Indikator Waktu Pemutaran & Seek Bar */}
+                <div className="space-y-2 pt-1">
+                  <div className="flex justify-between items-center text-xs font-mono font-bold text-slate-700">
+                    <span className="flex items-center gap-1">
+                      <span className="text-slate-500 font-sans font-medium">Waktu:</span>
+                      <span className="text-red-700">{formatTime(currentTime)}</span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="text-slate-500 font-sans font-medium">Durasi:</span>
+                      <span>{duration > 0 ? formatTime(duration) : '--:--'}</span>
+                    </span>
                   </div>
-                )}
 
-                {/* Kontrol Utama: Putar, Jeda, Lanjutkan, Berhenti */}
-                <div className="flex flex-wrap items-center gap-2 pt-2">
-                  <button
-                    onClick={handlePrimaryButtonClick}
-                    disabled={!isAvailable}
-                    className={`flex-1 py-3 px-4 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all shadow-md active:scale-98 ${
-                      !isAvailable
-                        ? 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed'
-                        : isPlaying
-                        ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 cursor-pointer shadow-amber-500/25'
-                        : isPaused
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-emerald-600/30'
-                        : 'bg-linear-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white cursor-pointer shadow-red-600/30'
-                    }`}
-                  >
-                    {!isAvailable ? (
-                      <>
-                        <FileQuestion className="w-4 h-4" />
-                        <span>Musik Belum Tersedia</span>
-                      </>
-                    ) : isPlaying ? (
-                      <>
-                        <Pause className="w-4 h-4 fill-current" />
-                        <span>⏸ JEDA</span>
-                      </>
-                    ) : isPaused ? (
-                      <>
-                        <Play className="w-4 h-4 fill-current" />
-                        <span>▶ LANJUTKAN</span>
-                      </>
-                    ) : (
-                      <>
-                        <Play className="w-4 h-4 fill-current" />
-                        <span>▶ PUTAR {currentTrack.title.toUpperCase()}</span>
-                      </>
-                    )}
-                  </button>
-
-                  {/* Tombol Stop / Berhenti */}
-                  {isAvailable && (isPlaying || isPaused) && (
-                    <button
-                      onClick={handleStop}
-                      className="py-3 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
-                      title="Hentikan Lagu"
-                      aria-label="Hentikan"
-                    >
-                      <Square className="w-3.5 h-3.5 fill-slate-700" />
-                      <span>STOP</span>
-                    </button>
-                  )}
-
-                  {/* Tombol Mute / Unmute */}
-                  <button
-                    onClick={handleToggleMute}
-                    disabled={!isAvailable}
-                    className={`p-3 rounded-xl border transition-colors cursor-pointer ${
-                      !isAvailable
-                        ? 'bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed'
-                        : isMuted
-                        ? 'bg-rose-100 border-rose-300 text-rose-700 hover:bg-rose-200'
-                        : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
-                    }`}
-                    title={isMuted ? 'Bunyikan (Unmute)' : 'Senyapkan (Mute)'}
-                    aria-label={isMuted ? 'Unmute' : 'Mute'}
-                  >
-                    {isMuted ? (
-                      <VolumeX className="w-4 h-4 text-rose-600" />
-                    ) : (
-                      <Volume2 className="w-4 h-4" />
-                    )}
-                  </button>
+                  {/* Interactive Progress / Seek Bar */}
+                  <div className="relative flex items-center group">
+                    <input
+                      type="range"
+                      min="0"
+                      max={duration > 0 ? duration : 100}
+                      step="0.5"
+                      value={currentTime}
+                      disabled={!isAvailable || duration <= 0}
+                      onChange={(e) => {
+                        const newTime = parseFloat(e.target.value);
+                        audioService.seek(newTime);
+                      }}
+                      className="w-full accent-red-600 h-2 bg-slate-200 rounded-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="Penunjuk Waktu Pemutaran"
+                    />
+                  </div>
                 </div>
 
-                {/* Slider Kontrol Volume */}
+                {/* Pesan Error jika terjadi kegagalan pemutaran */}
+                {errorMessage && (
+                  <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <span>{errorMessage}</span>
+                  </div>
+                )}
+
+                {/* Tombol Kontrol Pemutar Musik: Putar, Jeda, Lanjutkan, Stop */}
+                <div className="space-y-2 pt-2">
+                  <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                    Kontrol Pemutaran:
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {/* 1. Tombol Putar */}
+                    <button
+                      onClick={async () => {
+                        if (!isAvailable) {
+                          return;
+                        }
+                        await audioService.play(true);
+                      }}
+                      disabled={!isAvailable || isPlaying}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95 ${
+                        !isAvailable
+                          ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                          : isPlaying
+                          ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                          : 'bg-linear-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white cursor-pointer shadow-red-500/20'
+                      }`}
+                      title={!isAvailable ? 'Musik belum tersedia' : 'Putar lagu dari awal'}
+                      aria-label="Putar"
+                    >
+                      <Play className="w-4 h-4 fill-current shrink-0" />
+                      <span>PUTAR</span>
+                    </button>
+
+                    {/* 2. Tombol Jeda */}
+                    <button
+                      onClick={() => audioService.pause()}
+                      disabled={!isAvailable || !isPlaying}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95 ${
+                        !isPlaying
+                          ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                          : 'bg-amber-500 hover:bg-amber-600 text-slate-950 cursor-pointer shadow-amber-500/20'
+                      }`}
+                      title={!isPlaying ? 'Lagu tidak sedang berputar' : 'Jeda lagu'}
+                      aria-label="Jeda"
+                    >
+                      <Pause className="w-4 h-4 fill-current shrink-0" />
+                      <span>JEDA</span>
+                    </button>
+
+                    {/* 3. Tombol Lanjutkan */}
+                    <button
+                      onClick={async () => {
+                        if (!isAvailable) return;
+                        await audioService.resume();
+                      }}
+                      disabled={!isAvailable || !isPaused}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95 ${
+                        !isPaused
+                          ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-emerald-600/25 ring-2 ring-emerald-400/40'
+                      }`}
+                      title={!isPaused ? 'Hanya aktif saat lagu sedang dijeda' : 'Lanjutkan lagu'}
+                      aria-label="Lanjutkan"
+                    >
+                      <Play className="w-4 h-4 fill-current shrink-0" />
+                      <span>LANJUTKAN</span>
+                    </button>
+
+                    {/* 4. Tombol Stop */}
+                    <button
+                      onClick={handleStop}
+                      disabled={!isAvailable || (!isPlaying && !isPaused && currentTime === 0)}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95 ${
+                        !isAvailable || (!isPlaying && !isPaused && currentTime === 0)
+                          ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                          : 'bg-slate-800 hover:bg-slate-900 text-white cursor-pointer'
+                      }`}
+                      title="Hentikan lagu dan reset waktu"
+                      aria-label="Stop"
+                    >
+                      <Square className="w-3.5 h-3.5 fill-current shrink-0" />
+                      <span>STOP</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Slider Kontrol Volume & Mute */}
                 {isAvailable && (
-                  <div className="space-y-1.5 pt-1">
+                  <div className="space-y-2 pt-2 border-t border-slate-200/80">
                     <div className="flex justify-between items-center text-xs font-bold text-slate-700">
-                      <span>Volume Audio</span>
-                      <span className="font-mono">{Math.round((isMuted ? 0 : volume) * 100)}%</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleToggleMute}
+                          className={`p-1.5 px-2.5 rounded-lg border text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            isMuted
+                              ? 'bg-rose-100 border-rose-300 text-rose-700 hover:bg-rose-200'
+                              : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
+                          }`}
+                          title={isMuted ? 'Bunyikan (Unmute)' : 'Senyapkan (Mute)'}
+                          aria-label={isMuted ? 'Unmute' : 'Mute'}
+                        >
+                          {isMuted ? (
+                            <VolumeX className="w-3.5 h-3.5 text-rose-600" />
+                          ) : (
+                            <Volume2 className="w-3.5 h-3.5 text-slate-600" />
+                          )}
+                          <span>{isMuted ? 'Senyap (Muted)' : 'Volume'}</span>
+                        </button>
+                      </div>
+                      <span className="font-mono font-bold text-slate-700">{Math.round((isMuted ? 0 : volume) * 100)}%</span>
                     </div>
                     <input
                       type="range"
@@ -484,11 +597,14 @@ export const AudioControlWidget: React.FC = () => {
                 )}
               </div>
 
-              {/* Catatan Legalitas & Transparansi */}
-              <div className="p-3 bg-red-50/70 border border-red-200/70 rounded-xl text-[11px] text-red-950 leading-relaxed flex items-start gap-2">
-                <Info className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                <p>
-                  Musik diputar secara sadar oleh pengguna tanpa autoplay otomatis. Bekerja mulus di peramban HP Android dan komputer tanpa mengganggu fitur lain atau aktivitas belajar.
+              {/* Panduan Menambahkan Berkas MP3 ke GitHub */}
+              <div className="p-3.5 bg-sky-50 border border-sky-200 rounded-xl text-xs text-sky-950 space-y-1.5 leading-relaxed">
+                <div className="flex items-center gap-2 font-bold text-sky-900">
+                  <Info className="w-4 h-4 text-sky-600 shrink-0" />
+                  <span>Panduan Menambahkan Lagu ke Repository:</span>
+                </div>
+                <p className="text-[11px] text-slate-700">
+                  Untuk mengaktifkan lagu <strong>Bangun Pemudi Pemuda</strong> secara permanen di web: letakkan file <code className="bg-sky-100 text-sky-900 px-1 py-0.5 rounded font-mono font-bold">bangun-pemudi-pemuda.mp3</code> ke dalam folder <code className="bg-sky-100 text-sky-900 px-1 py-0.5 rounded font-mono font-bold">/public/audio/</code> pada repository GitHub Anda, lalu lakukan commit & push. Vite akan otomatis menyertakannya ke dalam build GitHub Pages.
                 </p>
               </div>
             </div>

@@ -1,7 +1,7 @@
 /**
  * 7KAIH SMART AI - Audio & Music Service
  * Pemutar Musik Nasionalisme Indonesia ("Bangun Pemudi Pemuda" & "Indonesia Raya")
- * Mendukung base path dinamis untuk GitHub Pages (/7kaihsmartai/) dan dev server (/).
+ * Kompatibel dengan GitHub Pages (/7kaihsmartai/), dev server (/), dan peramban HP Android / desktop.
  */
 
 export type PlaybackState = 'idle' | 'playing' | 'paused' | 'ended' | 'error';
@@ -22,6 +22,7 @@ export interface NationalTrackInfo {
   composer: string;
   year: string;
   category: string;
+  expectedFile: string;
   srcMp3: string;
   srcOgg?: string;
   description: string;
@@ -34,9 +35,10 @@ export const NATIONAL_TRACKS: Record<NationalTrackId, NationalTrackInfo> = {
     composer: 'Alfred Simanjuntak',
     year: '1943',
     category: 'Lagu Nasional Republik Indonesia',
+    expectedFile: 'public/audio/bangun-pemudi-pemuda.mp3',
     srcMp3: getAudioPath('audio/bangun-pemudi-pemuda.mp3'),
     srcOgg: getAudioPath('audio/bangun-pemudi-pemuda.ogg'),
-    description: 'Lagu wajib nasional yang menggelorakan tekad, kepeloporan, dan integritas pemuda-pemudi Indonesia.',
+    description: 'Lagu wajib nasional ciptaan Alfred Simanjuntak (1943) yang menggelorakan tekad kepeloporan dan integritas pemuda-pemudi Indonesia (Arsip Audio Berlisensi Domain Publik).',
   },
   indonesia_raya: {
     id: 'indonesia_raya',
@@ -44,6 +46,7 @@ export const NATIONAL_TRACKS: Record<NationalTrackId, NationalTrackInfo> = {
     composer: 'Wage Rudolf Soepratman',
     year: '1928',
     category: 'Lagu Kebangsaan Republik Indonesia',
+    expectedFile: 'public/audio/indonesia-raya.mp3',
     srcMp3: getAudioPath('audio/indonesia-raya.mp3'),
     srcOgg: getAudioPath('audio/indonesia-raya.ogg'),
     description: 'Rekaman instrumen orkestra resmi United States Navy Band (Karya Bebas Hak Cipta / Public Domain).',
@@ -55,10 +58,12 @@ export interface AudioPlayerState {
   playbackState: PlaybackState;
   currentTime: number;
   duration: number;
-  volume: number;
+  volume: number; // 0.0 - 1.0 (default 1.0 = 100%)
   isMuted: boolean;
-  isAvailable: boolean;
+  isAvailable: boolean; // File sah ditemukan di server atau dimuat pengguna
   isCheckingAvailability: boolean;
+  isCustomFileLoaded: boolean;
+  customFileName: string | null;
   errorMessage: string | null;
   sfxEnabled: boolean;
   sfxVolume: number;
@@ -68,6 +73,7 @@ const STORAGE_SETTINGS_KEY = '7kaih_audio_vol_settings';
 
 class AudioService {
   private audio: HTMLAudioElement | null = null;
+  private customObjectUrl: string | null = null;
   private state: AudioPlayerState = {
     currentTrackId: 'bangun_pemudi_pemuda',
     playbackState: 'idle',
@@ -77,6 +83,8 @@ class AudioService {
     isMuted: false,
     isAvailable: false,
     isCheckingAvailability: false,
+    isCustomFileLoaded: false,
+    customFileName: null,
     errorMessage: null,
     sfxEnabled: true,
     sfxVolume: 0.7,
@@ -91,12 +99,12 @@ class AudioService {
     if (typeof window !== 'undefined') {
       try {
         this.initAudioElement();
-        // Cek ketersediaan lagu setelah render awal agar tidak memblokir hydration
+        // Cek ketersediaan lagu setelah inisialisasi awal
         setTimeout(() => {
           this.checkCurrentTrackAvailability().catch(() => {});
-        }, 100);
+        }, 150);
       } catch (e) {
-        console.warn('AudioService init caught:', e);
+        console.warn('AudioService constructor caught:', e);
       }
     }
   }
@@ -133,42 +141,70 @@ class AudioService {
     } catch {}
   }
 
-  public async checkTrackAvailability(trackId: NationalTrackId): Promise<boolean> {
+  /**
+   * Pengecekan riil keberadaan file audio di server (termasuk fallback OGG jika ada)
+   */
+  public async checkTrackAvailability(trackId: NationalTrackId, forceRefresh = false): Promise<boolean> {
     const track = NATIONAL_TRACKS[trackId];
-    if (this.availabilityCache.has(track.srcMp3)) {
+    if (!forceRefresh && this.availabilityCache.has(track.srcMp3)) {
       return Boolean(this.availabilityCache.get(track.srcMp3));
     }
 
     try {
-      const res = await fetch(track.srcMp3, { method: 'HEAD' });
-      const contentType = res.headers.get('content-type') || '';
-      const isHtmlFallback = contentType.includes('text/html');
-      const exists = res.ok && !isHtmlFallback;
+      // 1. Coba periksa file MP3
+      const resMp3 = await fetch(track.srcMp3, { method: 'HEAD' });
+      const ctMp3 = resMp3.headers.get('content-type') || '';
+      const isHtmlMp3 = ctMp3.includes('text/html'); // Menandakan 404 SPA fallback
+      if (resMp3.ok && !isHtmlMp3) {
+        this.availabilityCache.set(track.srcMp3, true);
+        return true;
+      }
 
-      this.availabilityCache.set(track.srcMp3, exists);
-      return exists;
+      // 2. Jika MP3 belum ada, coba fallback OGG jika tersedia
+      if (track.srcOgg) {
+        const resOgg = await fetch(track.srcOgg, { method: 'HEAD' });
+        const ctOgg = resOgg.headers.get('content-type') || '';
+        const isHtmlOgg = ctOgg.includes('text/html');
+        if (resOgg.ok && !isHtmlOgg) {
+          this.availabilityCache.set(track.srcMp3, true);
+          return true;
+        }
+      }
+
+      this.availabilityCache.set(track.srcMp3, false);
+      return false;
     } catch {
       this.availabilityCache.set(track.srcMp3, false);
       return false;
     }
   }
 
-  private async checkCurrentTrackAvailability() {
+  public async checkCurrentTrackAvailability(forceRefresh = false) {
+    if (this.state.isCustomFileLoaded) {
+      this.state.isAvailable = true;
+      this.state.errorMessage = null;
+      this.notify();
+      return;
+    }
+
     this.state.isCheckingAvailability = true;
     this.notify();
 
-    const isAvailable = await this.checkTrackAvailability(this.state.currentTrackId);
+    const track = NATIONAL_TRACKS[this.state.currentTrackId];
+    const isAvailable = await this.checkTrackAvailability(this.state.currentTrackId, forceRefresh);
+    
     this.state.isCheckingAvailability = false;
     this.state.isAvailable = isAvailable;
 
     if (!isAvailable) {
-      const track = NATIONAL_TRACKS[this.state.currentTrackId];
       this.state.playbackState = 'idle';
-      this.state.errorMessage = `Berkas audio "${track.title}" belum tersedia di ${track.srcMp3}. Silakan tambahkan file audio yang sah.`;
+      this.state.errorMessage = `Berkas audio "${track.title}" belum tersedia di ${track.expectedFile}. Anda dapat menambahkan berkas audio sah ke folder tersebut, atau memilih file MP3 dari perangkat Anda.`;
     } else {
       this.state.errorMessage = null;
-      if (this.audio && (!this.audio.src || !this.audio.src.includes(NATIONAL_TRACKS[this.state.currentTrackId].srcMp3))) {
-        this.audio.src = NATIONAL_TRACKS[this.state.currentTrackId].srcMp3;
+      if (this.audio && (!this.audio.src || !this.audio.src.includes(track.srcMp3))) {
+        this.audio.src = track.srcMp3;
+        this.audio.preload = 'metadata';
+        this.audio.load();
       }
     }
 
@@ -179,7 +215,7 @@ class AudioService {
     if (this.audio) return;
 
     this.audio = new Audio();
-    this.audio.preload = 'none'; // Hindari pemuatan langsung jika file belum ada
+    this.audio.preload = 'none'; // Jangan memuat media jika berkas belum dipastikan ada
     this.audio.volume = this.state.volume;
     this.audio.muted = this.state.isMuted;
 
@@ -187,6 +223,21 @@ class AudioService {
       this.state.duration = this.audio?.duration || 0;
       this.state.isAvailable = true;
       this.state.errorMessage = null;
+      this.notify();
+    });
+
+    this.audio.addEventListener('durationchange', () => {
+      if (this.audio && this.audio.duration && !isNaN(this.audio.duration)) {
+        this.state.duration = this.audio.duration;
+        this.notify();
+      }
+    });
+
+    this.audio.addEventListener('canplay', () => {
+      if (this.audio && this.audio.duration && !isNaN(this.audio.duration)) {
+        this.state.duration = this.audio.duration;
+      }
+      this.state.isAvailable = true;
       this.notify();
     });
 
@@ -228,10 +279,27 @@ class AudioService {
     });
 
     this.audio.addEventListener('error', () => {
-      const track = NATIONAL_TRACKS[this.state.currentTrackId];
-      this.state.playbackState = 'idle';
+      const mediaErr = this.audio?.error;
+      let msg = 'Gagal memuat berkas audio.';
+      if (mediaErr) {
+        switch (mediaErr.code) {
+          case MediaError.MEDIA_ERR_ABORTED:
+            msg = 'Pemutaran audio dibatalkan oleh peramban.';
+            break;
+          case MediaError.MEDIA_ERR_NETWORK:
+            msg = 'Koneksi jaringan terputus saat mengunduh audio.';
+            break;
+          case MediaError.MEDIA_ERR_DECODE:
+            msg = 'Format audio rusak atau tidak dapat didekode oleh peramban.';
+            break;
+          case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+            msg = `Berkas audio tidak ditemukan (HTTP 404). Pastikan berkas tersedia di jalur ${NATIONAL_TRACKS[this.state.currentTrackId].srcMp3}.`;
+            break;
+        }
+      }
+      this.state.playbackState = 'error';
       this.state.isAvailable = false;
-      this.state.errorMessage = `Berkas audio "${track.title}" belum tersedia di ${track.srcMp3}.`;
+      this.state.errorMessage = msg;
       this.notify();
     });
   }
@@ -254,6 +322,9 @@ class AudioService {
     return NATIONAL_TRACKS[this.state.currentTrackId];
   }
 
+  /**
+   * Pindah lagu (antara "Bangun Pemudi Pemuda" dan "Indonesia Raya")
+   */
   public async switchTrack(trackId: NationalTrackId) {
     if (this.state.currentTrackId === trackId) return;
 
@@ -262,40 +333,76 @@ class AudioService {
       this.audio.currentTime = 0;
     }
 
+    // Lepas URL custom jika sebelumnya menggunakan file upload
+    if (this.customObjectUrl) {
+      URL.revokeObjectURL(this.customObjectUrl);
+      this.customObjectUrl = null;
+    }
+
     this.state.currentTrackId = trackId;
     this.state.playbackState = 'idle';
     this.state.currentTime = 0;
     this.state.duration = 0;
+    this.state.isCustomFileLoaded = false;
+    this.state.customFileName = null;
     this.saveSettings();
 
-    const track = NATIONAL_TRACKS[trackId];
-    const isAvail = await this.checkTrackAvailability(trackId);
-    this.state.isAvailable = isAvail;
-
-    if (this.audio && isAvail) {
-      this.audio.src = track.srcMp3;
-    }
-
-    this.notify();
+    await this.checkCurrentTrackAvailability(true);
   }
 
-  public async play(): Promise<boolean> {
+  /**
+   * Memuat file audio MP3 langsung dari perangkat pengguna (HP / Komputer)
+   */
+  public loadUserAudioFile(file: File): boolean {
+    this.initAudioElement();
+    if (!this.audio) return false;
+
+    try {
+      if (this.customObjectUrl) {
+        URL.revokeObjectURL(this.customObjectUrl);
+      }
+
+      this.customObjectUrl = URL.createObjectURL(file);
+      this.audio.pause();
+      this.audio.src = this.customObjectUrl;
+      this.audio.currentTime = 0;
+
+      this.state.isAvailable = true;
+      this.state.isCustomFileLoaded = true;
+      this.state.customFileName = file.name;
+      this.state.playbackState = 'idle';
+      this.state.errorMessage = null;
+      this.notify();
+      return true;
+    } catch (err: any) {
+      this.state.errorMessage = `Gagal memuat berkas lokal: ${err.message}`;
+      this.notify();
+      return false;
+    }
+  }
+
+  /**
+   * Putar lagu
+   * Menghubungkan langsung ke HTMLAudioElement
+   */
+  public async play(restartFromBeginning = false): Promise<boolean> {
     this.initAudioElement();
     if (!this.audio) return false;
 
     const track = NATIONAL_TRACKS[this.state.currentTrackId];
 
-    if (!this.state.isAvailable) {
-      this.state.errorMessage = `Musik belum tersedia. File ${track.srcMp3} belum ditambahkan.`;
+    if (!this.state.isAvailable && !this.state.isCustomFileLoaded) {
+      this.state.errorMessage = `Berkas audio belum tersedia di ${track.expectedFile}. Silakan tambahkan berkas MP3 atau pilih dari perangkat.`;
       this.notify();
       return false;
     }
 
     try {
-      if (!this.audio.src || !this.audio.src.endsWith(track.srcMp3)) {
-        this.audio.src = track.srcMp3;
+      const targetSrc = this.customObjectUrl || track.srcMp3;
+      if (!this.audio.src || !this.audio.src.includes(targetSrc)) {
+        this.audio.src = targetSrc;
       }
-      if (this.state.playbackState === 'ended') {
+      if (restartFromBeginning || this.state.playbackState === 'ended' || this.state.playbackState === 'idle') {
         this.audio.currentTime = 0;
       }
       await this.audio.play();
@@ -304,13 +411,20 @@ class AudioService {
       this.notify();
       return true;
     } catch (err: any) {
-      this.state.errorMessage = 'Pemutaran diblokir oleh browser. Silakan klik tombol Putar kembali.';
+      if (err.name === 'NotAllowedError') {
+        this.state.errorMessage = 'Browser membutuhkan izin sentuh pengguna. Silakan tekan tombol Putar sekali lagi.';
+      } else {
+        this.state.errorMessage = `Tidak dapat memutar audio: ${err.message || 'Format tidak didukung'}.`;
+      }
       this.state.playbackState = this.audio.currentTime > 0 ? 'paused' : 'idle';
       this.notify();
       return false;
     }
   }
 
+  /**
+   * Jeda lagu pada detik saat ini
+   */
   public pause() {
     if (!this.audio) return;
     this.audio.pause();
@@ -318,6 +432,9 @@ class AudioService {
     this.notify();
   }
 
+  /**
+   * Lanjutkan pemutaran tanpa mereset waktu
+   */
   public async resume(): Promise<boolean> {
     if (!this.audio || !this.state.isAvailable) return false;
     try {
@@ -333,6 +450,20 @@ class AudioService {
     }
   }
 
+  /**
+   * Lompat / ubah posisi detik pemutaran (seek)
+   */
+  public seek(seconds: number) {
+    if (!this.audio || !this.state.isAvailable) return;
+    const clamped = Math.max(0, Math.min(this.state.duration || seconds, seconds));
+    this.audio.currentTime = clamped;
+    this.state.currentTime = clamped;
+    this.notify();
+  }
+
+  /**
+   * Hentikan musik dan reset ke detik 00:00
+   */
   public stop() {
     if (!this.audio) return;
     this.audio.pause();
@@ -365,6 +496,11 @@ class AudioService {
     }
     return false;
   }
+
+  /* -------------------------------------------------------------
+   * UI Sound Effects (Centang Kebiasaan & Prestasi)
+   * Efek suara terpisah untuk interaksi siswa
+   * ------------------------------------------------------------- */
 
   private initSfxContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
