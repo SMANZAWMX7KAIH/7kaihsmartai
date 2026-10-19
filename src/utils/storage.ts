@@ -79,11 +79,15 @@ export function calculateDayPoints(dayLog: DailyLog): number {
 export function calculateTotalPoints(logs: Record<string, DailyLog>): number {
   if (!logs || typeof logs !== 'object') return 0;
   let total = 0;
-  Object.values(logs).forEach((log) => {
-    if (log) {
-      total += calculateDayPoints(log);
-    }
-  });
+  try {
+    Object.values(logs).forEach((log) => {
+      if (log && typeof log === 'object') {
+        total += calculateDayPoints(log);
+      }
+    });
+  } catch (e) {
+    console.warn('calculateTotalPoints caught error:', e);
+  }
   return total;
 }
 
@@ -91,18 +95,28 @@ export function calculateTotalPoints(logs: Record<string, DailyLog>): number {
 export function getDailyLogs(): Record<string, DailyLog> {
   const todayKey = formatDateKey(new Date());
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.DAILY_LOGS);
+    const raw = typeof window !== 'undefined' && window.localStorage ? localStorage.getItem(STORAGE_KEYS.DAILY_LOGS) : null;
     if (!raw) {
       const initialLogs: Record<string, DailyLog> = {
         [todayKey]: createEmptyDayLog(todayKey),
       };
       try {
-        localStorage.setItem(STORAGE_KEYS.DAILY_LOGS, JSON.stringify(initialLogs));
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem(STORAGE_KEYS.DAILY_LOGS, JSON.stringify(initialLogs));
+        }
       } catch {}
       return initialLogs;
     }
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      // Validate each day entry
+      Object.keys(parsed).forEach((k) => {
+        if (!parsed[k] || typeof parsed[k] !== 'object') {
+          parsed[k] = createEmptyDayLog(k);
+        } else if (!parsed[k].habits || typeof parsed[k].habits !== 'object') {
+          parsed[k].habits = createEmptyDayLog(k).habits;
+        }
+      });
       return parsed;
     }
     return { [todayKey]: createEmptyDayLog(todayKey) };
@@ -114,7 +128,9 @@ export function getDailyLogs(): Record<string, DailyLog> {
 
 export function saveDailyLogs(logs: Record<string, DailyLog>): void {
   try {
-    localStorage.setItem(STORAGE_KEYS.DAILY_LOGS, JSON.stringify(logs));
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(STORAGE_KEYS.DAILY_LOGS, JSON.stringify(logs));
+    }
   } catch (e) {
     console.error('Failed to save daily logs:', e);
   }
@@ -122,7 +138,7 @@ export function saveDailyLogs(logs: Record<string, DailyLog>): void {
 
 export function getOrCreateDayLog(dateKey: string): DailyLog {
   const logs = getDailyLogs();
-  if (logs && logs[dateKey]) {
+  if (logs && logs[dateKey] && typeof logs[dateKey] === 'object' && logs[dateKey].habits) {
     return logs[dateKey];
   }
 
@@ -142,7 +158,13 @@ export function toggleHabitCheck(
   notes?: string
 ): { updatedLog: DailyLog; newTotalPoints: number } {
   const logs = getDailyLogs();
-  const dayLog = logs[dateKey] || createEmptyDayLog(dateKey);
+  const dayLog = (logs[dateKey] && typeof logs[dateKey] === 'object' && logs[dateKey].habits) 
+    ? logs[dateKey] 
+    : createEmptyDayLog(dateKey);
+
+  if (!dayLog.habits) {
+    dayLog.habits = createEmptyDayLog(dateKey).habits;
+  }
 
   dayLog.habits[habitId] = {
     completed,
@@ -158,14 +180,18 @@ export function toggleHabitCheck(
   saveDailyLogs(logs);
 
   const newTotalPoints = calculateTotalPoints(logs);
-  localStorage.setItem(STORAGE_KEYS.TOTAL_POINTS, String(newTotalPoints));
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(STORAGE_KEYS.TOTAL_POINTS, String(newTotalPoints));
+    }
+  } catch {}
 
   return { updatedLog: dayLog, newTotalPoints };
 }
 
 export function getStudentProfile(): StudentProfile {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.STUDENT_PROFILE);
+    const raw = typeof window !== 'undefined' && window.localStorage ? localStorage.getItem(STORAGE_KEYS.STUDENT_PROFILE) : null;
     if (!raw) return { ...INITIAL_STUDENT_PROFILE };
     const parsed = JSON.parse(raw);
     if (parsed && typeof parsed === 'object') {
@@ -179,22 +205,36 @@ export function getStudentProfile(): StudentProfile {
 
 export function saveStudentProfile(profile: StudentProfile): void {
   try {
-    localStorage.setItem(STORAGE_KEYS.STUDENT_PROFILE, JSON.stringify(profile));
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(STORAGE_KEYS.STUDENT_PROFILE, JSON.stringify(profile));
+    }
   } catch (e) {}
 }
 
 export function getBadges(): BadgeItem[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.BADGES);
+    const raw = typeof window !== 'undefined' && window.localStorage ? localStorage.getItem(STORAGE_KEYS.BADGES) : null;
     if (!raw) {
       try {
-        localStorage.setItem(STORAGE_KEYS.BADGES, JSON.stringify(INITIAL_BADGES));
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem(STORAGE_KEYS.BADGES, JSON.stringify(INITIAL_BADGES));
+        }
       } catch {}
       return [...INITIAL_BADGES];
     }
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+      const sanitized = parsed.filter((b) => b && typeof b === 'object' && b.id);
+      if (sanitized.length > 0) {
+        const map = new Map<string, BadgeItem>();
+        INITIAL_BADGES.forEach((b) => map.set(b.id, { ...b }));
+        sanitized.forEach((b) => {
+          if (map.has(b.id)) {
+            map.set(b.id, { ...map.get(b.id)!, ...b });
+          }
+        });
+        return Array.from(map.values());
+      }
     }
     return [...INITIAL_BADGES];
   } catch (e) {
@@ -204,7 +244,9 @@ export function getBadges(): BadgeItem[] {
 
 export function saveBadges(badges: BadgeItem[]): void {
   try {
-    localStorage.setItem(STORAGE_KEYS.BADGES, JSON.stringify(badges));
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(STORAGE_KEYS.BADGES, JSON.stringify(badges));
+    }
   } catch (e) {}
 }
 
@@ -220,6 +262,7 @@ export function checkAndUnlockBadges(
   const safeLogs = (logs && typeof logs === 'object') ? logs : {};
 
   const updated = badges.map((badge) => {
+    if (!badge || typeof badge !== 'object') return badge;
     if (badge.unlocked) return badge;
 
     let shouldUnlock = false;
@@ -231,9 +274,9 @@ export function checkAndUnlockBadges(
     }
 
     if (badge.id === 'disiplin_emas') {
-      // Check if any date has all 7 habits completed
       const hasPerfectDay = Object.values(safeLogs).some((l) => {
-        return HABITS_LIST.filter((h) => l?.habits?.[h.id]?.completed).length === 7;
+        if (!l || typeof l !== 'object' || !l.habits) return false;
+        return HABITS_LIST.filter((h) => l.habits?.[h.id]?.completed).length === 7;
       });
       if (hasPerfectDay) shouldUnlock = true;
     }
@@ -267,12 +310,15 @@ export function calculateStreak(logs: Record<string, DailyLog>): number {
     const key = formatDateKey(d);
     const log = logs[key];
 
-    if (!log) {
+    if (!log || typeof log !== 'object' || !log.habits) {
       if (i === 0) continue; // If today hasn't been logged yet, still evaluate yesterday
       break;
     }
 
-    const doneCount = Object.values(log.habits || {}).filter((h) => h.completed).length;
+    const doneCount = Object.values(log.habits || {}).filter(
+      (h) => h && typeof h === 'object' && Boolean(h.completed)
+    ).length;
+
     if (doneCount >= 1) {
       streak++;
     } else {
@@ -415,9 +461,13 @@ export function importDataBackup(jsonString: string): boolean {
 
 // Reset all data to clean initial state
 export function resetAllData(): void {
-  localStorage.removeItem(STORAGE_KEYS.DAILY_LOGS);
-  localStorage.removeItem(STORAGE_KEYS.BADGES);
-  localStorage.removeItem(STORAGE_KEYS.TOTAL_POINTS);
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem(STORAGE_KEYS.DAILY_LOGS);
+      localStorage.removeItem(STORAGE_KEYS.BADGES);
+      localStorage.removeItem(STORAGE_KEYS.TOTAL_POINTS);
+    }
+  } catch {}
   const todayKey = formatDateKey(new Date());
   const initialLogs = { [todayKey]: createEmptyDayLog(todayKey) };
   saveDailyLogs(initialLogs);

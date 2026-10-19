@@ -150,31 +150,44 @@ class AudioService {
       return Boolean(this.availabilityCache.get(track.srcMp3));
     }
 
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timeoutId = controller ? setTimeout(() => controller.abort(), 2500) : null;
+
     try {
       // 1. Coba periksa file MP3
-      const resMp3 = await fetch(track.srcMp3, { method: 'HEAD' });
+      const resMp3 = await fetch(track.srcMp3, { 
+        method: 'HEAD',
+        signal: controller ? controller.signal : undefined 
+      });
       const ctMp3 = resMp3.headers.get('content-type') || '';
       const isHtmlMp3 = ctMp3.includes('text/html'); // Menandakan 404 SPA fallback
       if (resMp3.ok && !isHtmlMp3) {
         this.availabilityCache.set(track.srcMp3, true);
+        if (timeoutId) clearTimeout(timeoutId);
         return true;
       }
 
       // 2. Jika MP3 belum ada, coba fallback OGG jika tersedia
       if (track.srcOgg) {
-        const resOgg = await fetch(track.srcOgg, { method: 'HEAD' });
+        const resOgg = await fetch(track.srcOgg, { 
+          method: 'HEAD',
+          signal: controller ? controller.signal : undefined 
+        });
         const ctOgg = resOgg.headers.get('content-type') || '';
         const isHtmlOgg = ctOgg.includes('text/html');
         if (resOgg.ok && !isHtmlOgg) {
           this.availabilityCache.set(track.srcMp3, true);
+          if (timeoutId) clearTimeout(timeoutId);
           return true;
         }
       }
 
       this.availabilityCache.set(track.srcMp3, false);
+      if (timeoutId) clearTimeout(timeoutId);
       return false;
     } catch {
       this.availabilityCache.set(track.srcMp3, false);
+      if (timeoutId) clearTimeout(timeoutId);
       return false;
     }
   }

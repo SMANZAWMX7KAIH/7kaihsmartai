@@ -24,6 +24,10 @@ export default defineConfig(({ command }) => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      target: 'es2020',
+      sourcemap: false,
+    },
     server: {
       host: '0.0.0.0',
       port: 3000,

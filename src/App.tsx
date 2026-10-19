@@ -40,9 +40,21 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState<boolean>(false);
 
-  const prevUnlockedBadgeCount = useRef<number>(badges.filter(b => b.unlocked).length);
+  const prevUnlockedBadgeCount = useRef<number>(
+    Array.isArray(badges) ? badges.filter((b) => b && b.unlocked).length : 0
+  );
 
   const isFirstTime = !studentProfile.isRegistered || !studentProfile.name?.trim() || !studentProfile.age || studentProfile.age <= 0;
+
+  // Beri konfirmasi ke browser bahwa aplikasi telah berhasil dirender
+  useEffect(() => {
+    try {
+      const rootEl = document.getElementById('root');
+      if (rootEl) {
+        rootEl.setAttribute('data-loaded', 'true');
+      }
+    } catch {}
+  }, []);
 
   const reloadDataFromStorage = useCallback(() => {
     const logs = getDailyLogs();
@@ -189,16 +201,20 @@ export default function App() {
   };
 
   const todayKey = formatDateKey(new Date());
-  const todayLog = allLogs[todayKey] || getOrCreateDayLog(todayKey);
-  const currentViewLog = allLogs[currentDateKey] || getOrCreateDayLog(currentDateKey);
+  const todayLog = (allLogs && allLogs[todayKey] && typeof allLogs[todayKey] === 'object' && allLogs[todayKey].habits)
+    ? allLogs[todayKey]
+    : getOrCreateDayLog(todayKey);
+  const currentViewLog = (allLogs && allLogs[currentDateKey] && typeof allLogs[currentDateKey] === 'object' && allLogs[currentDateKey].habits)
+    ? allLogs[currentDateKey]
+    : getOrCreateDayLog(currentDateKey);
 
   const completedTodayCount = HABITS_LIST.filter(
-    (h) => todayLog.habits?.[h.id]?.completed
+    (h) => todayLog.habits && todayLog.habits[h.id]?.completed
   ).length;
 
   const todayCompletedHabitsMap: Record<string, boolean> = {};
   HABITS_LIST.forEach((h) => {
-    todayCompletedHabitsMap[h.id] = Boolean(todayLog.habits?.[h.id]?.completed);
+    todayCompletedHabitsMap[h.id] = Boolean(todayLog.habits && todayLog.habits[h.id]?.completed);
   });
 
   return (
