@@ -7,15 +7,13 @@ const rootElement = document.getElementById('root');
 
 if (rootElement) {
   try {
+    rootElement.setAttribute('data-loaded', 'true');
     const root = createRoot(rootElement);
     root.render(
       <ErrorBoundary>
         <App />
       </ErrorBoundary>
     );
-
-    // Tandai data-loaded setelah mounting dijadwalkan
-    rootElement.setAttribute('data-loaded', 'true');
   } catch (err) {
     console.error('Fatal initialization error:', err);
     try {
